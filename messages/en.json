@@ -313,6 +313,12 @@
   "auth.welcome_sub": "Train with your personal coach",
   "auth.welcome_title": "Hamza Gym",
 
+  "pwa.install_title": "Install Hamza Gym",
+  "pwa.install_body": "Add it to your home screen for quick access and offline use.",
+  "pwa.install_ios": "Tap the Share button, then “Add to Home Screen”.",
+  "pwa.install_button": "Install",
+  "pwa.install_dismiss": "Dismiss install prompt",
+
   "billing.chat_coach": "Chat with Coach",
   "billing.confirm": "Submit Payment Request",
   "billing.contact_coach": "Message {coach} to activate manually",

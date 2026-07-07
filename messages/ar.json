@@ -313,6 +313,12 @@
   "auth.welcome_sub": "اتمرن مع مدربك الشخصي",
   "auth.welcome_title": "جيم حمزة",
 
+  "pwa.install_title": "نزّل تطبيق جيم حمزة",
+  "pwa.install_body": "ضيفه لشاشة البداية عندك عشان تفتحه بسرعة وتشتغل من غير نت.",
+  "pwa.install_ios": "دوس على زرار المشاركة، وبعدين “أضف إلى الشاشة الرئيسية”.",
+  "pwa.install_button": "نزّل",
+  "pwa.install_dismiss": "إخفاء تنبيه التحميل",
+
   "billing.chat_coach": "كلم الكابتن",
   "billing.confirm": "إرسال طلب التفعيل",
   "billing.contact_coach": "ابعت رسالة لـ {coach} عشان يفعل الاشتراك مانيوال",

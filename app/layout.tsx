@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
 import { OfflineProvider } from "@/lib/offline/context";
 import { OfflineBanner } from "@/components/pwa/offline-banner";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { getLocale, getDict, MESSAGES } from "@/lib/i18n/server";
 import { dir } from "@/lib/i18n/config";
 import { DEFAULT_LOCALE } from "@/lib/i18n/config";
@@ -75,6 +76,7 @@ export default async function RootLayout({
               }}
             />
             <OfflineBanner />
+            <InstallPrompt />
             <RegisterSW />
           </OfflineProvider>
         </I18nProvider>
