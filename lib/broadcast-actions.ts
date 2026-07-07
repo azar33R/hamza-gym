@@ -60,7 +60,8 @@ export async function sendBroadcast(
     userIds,
     { title: title.trim(), body: body.trim() || undefined },
     "broadcast",
-    expiresAt
+    expiresAt,
+    "/dashboard"
   );
 
   return { error: null, recipients: userIds.length, delivered };

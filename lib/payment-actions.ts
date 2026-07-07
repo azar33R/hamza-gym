@@ -80,7 +80,9 @@ export async function submitPaymentRequest(data: {
           title: "New Payment Request 💰",
           body: `${firstName} submitted a ${planLabel} payment for approval.`,
         },
-        "payment"
+        "payment",
+        null,
+        "/admin/triage"
       );
     } catch {
       // Push is best-effort — the payment request itself is already saved.

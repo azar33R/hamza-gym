@@ -53,7 +53,9 @@ export async function approvePaymentRequest(requestId: string) {
       title: "Subscription Activated! 💪",
       body: "Your payment was approved. Welcome to the gym!",
     },
-    "payment"
+    "payment",
+    null,
+    "/dashboard"
   );
 
   revalidatePath("/admin/triage");
@@ -86,7 +88,9 @@ export async function rejectPaymentRequest(requestId: string) {
       title: "Payment Update",
       body: "Your payment request could not be verified. Please contact the gym.",
     },
-    "payment"
+    "payment",
+    null,
+    "/dashboard"
   );
 
   revalidatePath("/admin/triage");
@@ -112,7 +116,9 @@ export async function nudgeClient(userId: string) {
       title: "We miss you, " + name + "! 👋",
       body: "It's been a while since your last workout. Time to get back to it!",
     },
-    "nudge"
+    "nudge",
+    null,
+    "/dashboard"
   );
 
   revalidatePath("/admin/triage");

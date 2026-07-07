@@ -266,7 +266,7 @@ async function setOrderStatus(
         ? "Your shop order is ready for pickup! 🎉"
         : "Your shop order couldn't be verified. Please contact the gym.";
     try {
-      await sendPushToUser(order.user_id, { title: label, body }, "payment");
+      await sendPushToUser(order.user_id, { title: label, body }, "payment", null, "/shop");
     } catch {
       // best-effort
     }

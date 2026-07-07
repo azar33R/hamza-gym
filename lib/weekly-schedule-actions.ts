@@ -81,20 +81,39 @@ export async function getMyWeeklySchedule(): Promise<{
     resolveById(coachIds, "workout_templates", supabase),
   ]);
 
-  const presetMap = new Map(
-    WORKOUT_PRESETS.map((p) => [
-      p.id,
-      {
-        name: p.name,
-        description: p.description,
-        exercises: p.exercises.map((e) => ({
-          name: e.name,
-          sets: e.sets,
-          reps: e.reps,
-        })),
-      },
-    ])
-  );
+  // Preset resolution: prefer DB-backed gym presets (admin-editable), but keep
+  // the static WORKOUT_PRESETS as a fallback so any legacy schedules still
+  // referencing the old string ids resolve correctly.
+  const presetMap = new Map<
+    string,
+    { name: string; description: string | null; exercises: Exercise[] }
+  >();
+  for (const p of WORKOUT_PRESETS) {
+    presetMap.set(p.id, {
+      name: p.name,
+      description: p.description,
+      exercises: p.exercises.map((e) => ({
+        name: e.name,
+        sets: e.sets,
+        reps: e.reps,
+      })),
+    });
+  }
+  const { data: dbPresets } = await supabase
+    .from("workout_presets")
+    .select("id, name, description, exercises");
+  for (const p of (dbPresets ?? []) as {
+    id: string;
+    name: string;
+    description: string | null;
+    exercises: unknown;
+  }[]) {
+    presetMap.set(p.id, {
+      name: p.name,
+      description: p.description,
+      exercises: (p.exercises as Exercise[]) ?? [],
+    });
+  }
 
   const days: ResolvedDay[] = rows
     .map((r) => {

@@ -127,6 +127,7 @@ export type Notification = {
   body: string | null;
   type: NotificationType;
   is_read: boolean;
+  link: string | null;
   created_at: string;
 };
 

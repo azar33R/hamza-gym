@@ -17,7 +17,6 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
-import { WORKOUT_PRESETS, translatePresets } from "@/lib/constants";
 import {
   Tabs,
   TabsContent,
@@ -101,7 +100,7 @@ export function WorkoutChooser({
   const [editorOpen, setEditorOpen] = useState(false);
   const [seed, setSeed] = useState<EditorSeed>(emptySeed);
   const [weekKey, setWeekKey] = useState(0);
-  const tPresets = presets === WORKOUT_PRESETS ? translatePresets(t) : presets;
+  const tPresets = presets;
 
   if (selected) {
     return (

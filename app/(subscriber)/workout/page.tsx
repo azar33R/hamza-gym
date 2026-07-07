@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { WorkoutChooser } from "@/components/subscriber/workout-chooser";
-import { WORKOUT_PRESETS, STAFF_ROLES } from "@/lib/constants";
+import { STAFF_ROLES } from "@/lib/constants";
 import { getMyWeeklySchedule } from "@/lib/weekly-schedule-actions";
+import { getWorkoutPresets } from "@/lib/workout-preset-actions";
 import type { Exercise, Machine, UserWorkoutTemplate } from "@/lib/types";
+import type { WorkoutPreset } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -101,9 +103,12 @@ export default async function WorkoutPage() {
     .order("name", { ascending: true });
   const machines = (machineRows as Machine[] | null) ?? [];
 
+  // Gym-wide presets (admin-managed, DB-backed).
+  const presets = await getWorkoutPresets();
+
   return (
     <WorkoutChooser
-      presets={WORKOUT_PRESETS}
+      presets={presets}
       myPlans={myPlans}
       coachTemplate={coachTemplate}
       coachTemplates={coachTemplates}

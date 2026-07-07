@@ -91,7 +91,9 @@ export async function sendMessage(
     await sendPushToUser(
       recipientId,
       { title: senderName, body: trimmed },
-      "dm"
+      "dm",
+      null,
+      "/chat"
     );
   } catch {
     // Push is best-effort — the message itself is already persisted.

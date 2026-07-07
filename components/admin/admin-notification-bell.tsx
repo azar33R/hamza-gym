@@ -78,6 +78,15 @@ export function AdminNotificationBell({
     });
   }
 
+  async function handleOpen(n: Notification) {
+    const link = n.link ?? "/admin/triage";
+    startTransition(async () => {
+      await markNotificationRead(n.id);
+      setOpen(false);
+      router.push(link);
+    });
+  }
+
   return (
     <div className="relative" ref={ref}>
       <button
@@ -119,10 +128,12 @@ export function AdminNotificationBell({
               initial.slice(0, 10).map((n) => {
                 const Icon = iconFor(n.type);
                 return (
-                  <div
+                  <button
                     key={n.id}
+                    type="button"
+                    onClick={() => handleOpen(n)}
                     className={cn(
-                      "flex items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-800/40",
+                      "flex w-full items-start gap-3 px-4 py-3 text-start transition-colors hover:bg-zinc-800/40",
                       !n.is_read && "bg-primary/5"
                     )}
                   >
@@ -145,7 +156,7 @@ export function AdminNotificationBell({
                     {!n.is_read && (
                       <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                     )}
-                  </div>
+                  </button>
                 );
               })
             )}

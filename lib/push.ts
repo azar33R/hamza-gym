@@ -50,7 +50,8 @@ export async function sendPushToUser(
   userId: string,
   payload: PushPayload,
   type: NotificationType = "broadcast",
-  expiresAt?: string | null
+  expiresAt?: string | null,
+  link?: string | null
 ): Promise<number> {
   const supabase = serviceClient();
 
@@ -62,6 +63,7 @@ export async function sendPushToUser(
     type,
   };
   if (expiresAt) notif.expires_at = expiresAt;
+  if (link) notif.link = link;
   await supabase.from("notifications").insert(notif);
 
   // 2) Attempt web push delivery.
@@ -114,11 +116,12 @@ export async function sendPushToMany(
   userIds: string[],
   payload: PushPayload,
   type: NotificationType = "broadcast",
-  expiresAt?: string | null
+  expiresAt?: string | null,
+  link?: string | null
 ): Promise<number> {
   let delivered = 0;
   for (const id of userIds) {
-    delivered += await sendPushToUser(id, payload, type, expiresAt);
+    delivered += await sendPushToUser(id, payload, type, expiresAt, link);
   }
   return delivered;
 }

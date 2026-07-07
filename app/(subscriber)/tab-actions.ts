@@ -2,8 +2,9 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/lib/supabase/server";
-import { WORKOUT_PRESETS } from "@/lib/constants";
 import { getMyWeeklySchedule } from "@/lib/weekly-schedule-actions";
+import { getWorkoutPresets } from "@/lib/workout-preset-actions";
+import type { WorkoutPreset } from "@/lib/constants";
 import {
   pointsLeaderboard,
   ratioLeaderboard,
@@ -296,6 +297,7 @@ export type WorkoutPageData = {
   weeklySchedule: Awaited<ReturnType<typeof getMyWeeklySchedule>>["days"];
   coaches: { id: string; full_name: string | null }[];
   machines: Machine[];
+  presets: WorkoutPreset[];
 };
 
 export async function getWorkoutData(): Promise<{
@@ -309,6 +311,7 @@ export async function getWorkoutData(): Promise<{
   const today = new Date().toISOString().split("T")[0];
 
   const weeklySchedulePromise = getMyWeeklySchedule();
+  const presetsPromise = getWorkoutPresets();
 
   const [profileRes, scheduledRes, coachRes, myRes, coachProfileRes, machineRes] =
     await Promise.all([
@@ -371,6 +374,7 @@ export async function getWorkoutData(): Promise<{
   }));
 
   const { days: weeklyDays } = await weeklySchedulePromise;
+  const presets = await presetsPromise;
 
     return {
       error: null,
@@ -382,6 +386,7 @@ export async function getWorkoutData(): Promise<{
         weeklySchedule: weeklyDays,
         coaches: (coachProfileRes.data ?? []) as { id: string; full_name: string | null }[],
         machines: (machineRes.data as Machine[] | null) ?? [],
+        presets,
       },
     };
 }

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { getWorkoutData, type WorkoutPageData } from "@/app/(subscriber)/tab-actions";
-import { WORKOUT_PRESETS } from "@/lib/constants";
 import { WorkoutChooser } from "@/components/subscriber/workout-chooser";
 import { useTabContext } from "@/app/(subscriber)/tab-context";
 
@@ -33,7 +32,7 @@ export function WorkoutTab() {
 
   return (
     <WorkoutChooser
-      presets={WORKOUT_PRESETS}
+      presets={data.presets}
       myPlans={data.myPlans}
       coachTemplate={data.coachTemplate}
       coachTemplates={data.coachTemplates}

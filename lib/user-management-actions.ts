@@ -28,7 +28,9 @@ export async function activateViaCash(userId: string, planType: PlanType) {
   await sendPushToUser(
     userId,
     { title: "Membership Activated! 💪", body: "Your coach has activated your plan." },
-    "payment"
+    "payment",
+    null,
+    "/dashboard"
   );
 
   revalidatePath("/admin/clients");
