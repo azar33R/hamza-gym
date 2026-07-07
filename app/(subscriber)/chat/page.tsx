@@ -2,6 +2,7 @@ import { MessageCircle } from "lucide-react";
 import { ChatDirectory } from "@/components/subscriber/chat-directory";
 import { fetchInbox } from "@/lib/chat-actions";
 import { getT } from "@/lib/i18n/server";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +10,28 @@ export const dynamic = "force-dynamic";
 // the client-side tabbed directory (Chats / Members / Staff).
 export default async function ChatPage() {
   const t = await getT();
-  const { error, contacts } = await fetchInbox([
-    "admin",
-    "staff",
-    "subscriber",
-  ]);
+
+  // Determine membership: only active subscribers may browse other members.
+  // Non-members (unpaid) can only reach staff + coaches + admin.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let isMember = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("subscription_status")
+      .eq("id", user.id)
+      .single();
+    isMember = profile?.subscription_status === "active";
+  }
+
+  const counterpartRoles = isMember
+    ? (["admin", "staff", "subscriber"] as const)
+    : (["admin", "staff"] as const);
+
+  const { error, contacts } = await fetchInbox([...counterpartRoles]);
 
   if (error) {
     return (
@@ -51,5 +69,5 @@ export default async function ChatPage() {
     );
   }
 
-  return <ChatDirectory contacts={contacts} />;
+  return <ChatDirectory contacts={contacts} isMember={isMember} />;
 }

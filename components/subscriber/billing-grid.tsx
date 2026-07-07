@@ -56,7 +56,7 @@ export function BillingGrid({
                 size="lg"
                 onClick={() => setSelected(plan)}
               >
-                {t("billing.select_plan", { label: plan.label })}
+                {t("billing.select_plan", { plan: plan.label })}
               </Button>
             </CardContent>
           </Card>

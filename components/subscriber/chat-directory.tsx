@@ -14,7 +14,13 @@ import { ChatInbox } from "@/components/subscriber/chat-inbox";
 import type { ChatContact } from "@/lib/chat-actions";
 import { useOffline } from "@/lib/offline/context";
 
-export function ChatDirectory({ contacts }: { contacts: ChatContact[] }) {
+export function ChatDirectory({
+  contacts,
+  isMember,
+}: {
+  contacts: ChatContact[];
+  isMember: boolean;
+}) {
   const router = useRouter();
   const { t } = useI18n();
   const { isOnline } = useOffline();
@@ -41,7 +47,9 @@ export function ChatDirectory({ contacts }: { contacts: ChatContact[] }) {
 
   const tabs = [
     { value: "chats", label: t("chat.tabs.chats"), icon: MessageCircle, count: currentChats.length },
-    { value: "members", label: t("chat.tabs.members"), icon: Users, count: members.length },
+    ...(isMember
+      ? [{ value: "members", label: t("chat.tabs.members"), icon: Users, count: members.length }]
+      : []),
     { value: "staff", label: t("chat.tabs.staff"), icon: Shield, count: staff.length },
   ] as const;
 
@@ -90,9 +98,11 @@ export function ChatDirectory({ contacts }: { contacts: ChatContact[] }) {
           )}
         </TabsContent>
 
-        <TabsContent value="members" className="mt-4 space-y-3">
-          <ChatInbox contacts={members} basePath="/chat" />
-        </TabsContent>
+        {isMember && (
+          <TabsContent value="members" className="mt-4 space-y-3">
+            <ChatInbox contacts={members} basePath="/chat" />
+          </TabsContent>
+        )}
 
         <TabsContent value="staff" className="mt-4 space-y-3">
           <ChatInbox contacts={staff} basePath="/chat" />
