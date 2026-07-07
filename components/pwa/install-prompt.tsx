@@ -7,6 +7,13 @@ import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "hamza-install-dismissed";
 
+// The BeforeInstallPromptEvent type is not yet in the standard TS DOM lib,
+// so we declare a minimal local version.
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 // Returns true when the app is already installed (running as a standalone PWA)
 // or added to the home screen. In that case we never show the prompt.
 function isStandalone(): boolean {
