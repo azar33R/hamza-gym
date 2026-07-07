@@ -37,7 +37,7 @@ export function DailyPinCard({ pin, updatedAt }: { pin: string; updatedAt: strin
       </div>
 
       <div className="mt-3 flex items-end gap-3">
-        <span className="font-mono text-7xl font-black leading-none tracking-tight text-zinc-50 sm:text-8xl" dir="ltr" unicodeBidi="plaintext">
+        <span className="font-mono text-7xl font-black leading-none tracking-tight text-zinc-50 sm:text-8xl" dir="ltr" style={{ unicodeBidi: "plaintext" }}>
           {pin}
         </span>
       </div>
