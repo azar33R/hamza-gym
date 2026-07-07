@@ -31,6 +31,7 @@ export async function saveMachine(
     primary_muscle: data.primary_muscle?.trim() || null,
   };
 
+  let error: { message: string } | null = null;
   let result;
   if (machineId) {
     ({ error, data: result } = await supabase
