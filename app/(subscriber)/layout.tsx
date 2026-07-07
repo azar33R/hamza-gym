@@ -4,6 +4,7 @@ import type { Profile } from "@/lib/types";
 import { isOnboarded } from "@/lib/onboarding";
 import { SubscriptionGate } from "@/components/subscriber/subscription-gate";
 import { BottomNav } from "@/components/subscriber/bottom-nav";
+import { OfflineBanner } from "@/components/pwa/offline-banner";
 import { TabShellProvider } from "@/app/(subscriber)/tab-context";
 
 // Opt out of static caching — always fetch fresh profile data.
@@ -47,12 +48,13 @@ export default async function SubscriberLayout({
       fullName={fullName}
       onboarded={isOnboarded(profile)}
     >
-      <TabShellProvider>
-        <main className="mx-auto w-full max-w-3xl overflow-x-hidden px-4 py-6 pb-28">
-          {children}
-        </main>
-        <BottomNav />
-      </TabShellProvider>
+        <TabShellProvider>
+          <main className="mx-auto w-full max-w-3xl overflow-x-hidden px-4 py-6 pb-28">
+            {children}
+          </main>
+          <BottomNav />
+          <OfflineBanner />
+        </TabShellProvider>
     </SubscriptionGate>
   );
 }

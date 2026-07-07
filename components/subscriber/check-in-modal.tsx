@@ -201,6 +201,7 @@ export function CheckInModal({
                 "flex justify-center gap-3 py-4",
                 shake && "animate-shake"
               )}
+              dir="ltr"
             >
               {digits.map((d, i) => (
                 <input

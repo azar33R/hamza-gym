@@ -4,8 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin";
-import { sendPushToMany } from "@/lib/push";
-import { STAFF_ROLES } from "@/lib/constants";
 import type { Cosmetic, CosmeticType, UserCosmetic } from "@/lib/types";
 import type { Tier } from "@/lib/constants";
 
@@ -165,29 +163,6 @@ export async function buyCosmetic(
     equipped: false,
   });
   if (grantErr) return { error: grantErr.message };
-
-  try {
-    const { data: buyer } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", userId)
-      .single();
-    const firstName = buyer?.full_name?.split(" ")[0] ?? "A member";
-
-    const { data: staff } = await supabase
-      .from("profiles")
-      .select("id")
-      .in("role", STAFF_ROLES);
-    const staffIds = (staff ?? []).map((s) => s.id);
-    if (staffIds.length > 0) {
-      await sendPushToMany(staffIds, {
-        title: "Cosmetic Purchased 🛍️",
-        body: `${firstName} bought ${cosmetic.name} for ${cosmetic.price_points ?? 0} points.`,
-      }, "broadcast");
-    }
-  } catch {
-    // best-effort
-  }
 
   revalidatePath("/cosmetics");
   revalidatePath("/dashboard");
