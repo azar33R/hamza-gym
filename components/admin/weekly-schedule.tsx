@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { X } from "lucide-react";
@@ -21,6 +21,16 @@ type ScheduledItem = {
   template_id: string;
 };
 
+const DAY_KEYS = [
+  "common.day_sun",
+  "common.day_mon",
+  "common.day_tue",
+  "common.day_wed",
+  "common.day_thu",
+  "common.day_fri",
+  "common.day_sat",
+];
+
 // Shows the current week (Mon–Sun starting today) with assignment controls.
 export function WeeklySchedule({
   userId,
@@ -35,6 +45,11 @@ export function WeeklySchedule({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  // Local mirror of scheduled workouts so assignments/removals appear instantly
+  // (the parent dialog only re-fetches this list when it re-opens).
+  const [items, setItems] = useState<ScheduledItem[]>(existing);
+  useEffect(() => setItems(existing), [existing]);
+
   // Build this week's 7 days starting Monday.
   const today = new Date();
   const day = today.getDay(); // 0 = Sun
@@ -47,14 +62,14 @@ export function WeeklySchedule({
     d.setDate(monday.getDate() + i);
     return {
       iso: d.toISOString().split("T")[0],
-      label: d.toLocaleDateString(undefined, { weekday: "short" }),
+      dow: d.getDay(),
       date: d.getDate(),
       isToday: i === 6 - (day === 0 ? 0 : 6 - day) || d.toDateString() === today.toDateString(),
     };
   });
 
   // index existing workouts by date
-  const byDate = new Map(existing.map((e) => [e.scheduled_date, e]));
+  const byDate = new Map(items.map((e) => [e.scheduled_date, e]));
   const [selectedTemplate, setSelectedTemplate] = useState<string>(
     templates[0]?.id ?? ""
   );
@@ -69,6 +84,12 @@ export function WeeklySchedule({
       if (res.error) {
         toast.error(res.error);
       } else {
+        if (res.item) {
+          setItems((prev) => [
+            ...prev.filter((p) => p.scheduled_date !== dateIso),
+            res.item!,
+          ]);
+        }
         toast.success(t("admin.weekly_schedule.workout_assigned"));
         router.refresh();
       }
@@ -81,6 +102,7 @@ export function WeeklySchedule({
       if (res.error) {
         toast.error(res.error);
       } else {
+        setItems((prev) => prev.filter((p) => p.id !== workoutId));
         toast.success(t("admin.weekly_schedule.workout_removed"));
         router.refresh();
       }
@@ -117,7 +139,7 @@ export function WeeklySchedule({
               )}
             >
               <div className="text-center">
-                <p className="text-[10px] uppercase text-zinc-400">{d.label}</p>
+                <p className="text-[10px] uppercase text-zinc-400">{t(DAY_KEYS[d.dow])}</p>
                 <p className="text-sm font-semibold text-zinc-200">{d.date}</p>
               </div>
               {item ? (

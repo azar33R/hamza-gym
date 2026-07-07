@@ -30,7 +30,15 @@ import { saveMachine, deleteMachine } from "@/lib/machine-actions";
 import { uploadMachinePhoto } from "@/lib/storage";
 import type { Machine } from "@/lib/types";
 
-export function MachineEditor({ trigger, machine }: { trigger: React.ReactNode; machine?: Machine | null }) {
+export function MachineEditor({
+  trigger,
+  machine,
+  onSaved,
+}: {
+  trigger: React.ReactNode;
+  machine?: Machine | null;
+  onSaved?: (m: Machine) => void;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -66,6 +74,7 @@ export function MachineEditor({ trigger, machine }: { trigger: React.ReactNode; 
         toast.error(res.error);
       } else {
         toast.success(machine ? t("admin.machines.machine_updated") : t("admin.machines.machine_created"));
+        if (res.machine) onSaved?.(res.machine);
         setOpen(false);
         router.refresh();
       }
@@ -200,6 +209,16 @@ export function DeleteMachineButton({ machineId }: { machineId: string }) {
 
 export function MachineLibraryManager({ machines }: { machines: Machine[] }) {
   const { t } = useI18n();
+  const [list, setList] = useState<Machine[]>(machines);
+
+  function handleSaved(m: Machine) {
+    setList((prev) => {
+      const exists = prev.some((p) => p.id === m.id);
+      if (exists) return prev.map((p) => (p.id === m.id ? m : p));
+      return [m, ...prev];
+    });
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
@@ -212,6 +231,7 @@ export function MachineLibraryManager({ machines }: { machines: Machine[] }) {
           </p>
         </div>
         <MachineEditor
+          onSaved={handleSaved}
           trigger={
             <Button size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" /> {t("common.new")}
@@ -220,7 +240,7 @@ export function MachineLibraryManager({ machines }: { machines: Machine[] }) {
         />
       </header>
 
-      {machines.length === 0 ? (
+      {list.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/40 p-10 text-center">
           <Cpu className="mx-auto mb-3 h-8 w-8 text-zinc-600" />
           <p className="text-sm text-zinc-400">{t("admin.machines.no_machines")}</p>
@@ -230,7 +250,7 @@ export function MachineLibraryManager({ machines }: { machines: Machine[] }) {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {machines.map((m) => (
+          {list.map((m) => (
             <div key={m.id} className="overflow-hidden rounded-xl border border-border bg-card">
               <div className="relative aspect-square bg-zinc-950">
                 {m.photo_url ? (
@@ -250,6 +270,7 @@ export function MachineLibraryManager({ machines }: { machines: Machine[] }) {
                 <div className="mt-2 flex gap-1">
                   <MachineEditor
                     machine={m}
+                    onSaved={handleSaved}
                     trigger={
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400 hover:text-zinc-50">
                         <Pencil className="h-4 w-4" />

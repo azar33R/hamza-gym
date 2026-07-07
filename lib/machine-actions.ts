@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { requireStaffOrAdmin } from "@/lib/admin";
+import type { Machine } from "@/lib/types";
 
 function serviceClient() {
   return createClient(
@@ -18,7 +19,7 @@ function serviceClient() {
 export async function saveMachine(
   machineId: string | null,
   data: { name: string; photo_url: string | null; primary_muscle: string | null }
-) {
+): Promise<{ error: string | null; machine?: Machine | null }> {
   await requireStaffOrAdmin();
 
   if (!data.name.trim()) return { error: "Name is required." };
@@ -30,11 +31,20 @@ export async function saveMachine(
     primary_muscle: data.primary_muscle?.trim() || null,
   };
 
-  let error;
+  let result;
   if (machineId) {
-    ({ error } = await supabase.from("machine_library").update(payload).eq("id", machineId));
+    ({ error, data: result } = await supabase
+      .from("machine_library")
+      .update(payload)
+      .eq("id", machineId)
+      .select("*")
+      .single());
   } else {
-    ({ error } = await supabase.from("machine_library").insert(payload));
+    ({ error, data: result } = await supabase
+      .from("machine_library")
+      .insert(payload)
+      .select("*")
+      .single());
   }
 
   if (error) return { error: error.message };
@@ -42,7 +52,7 @@ export async function saveMachine(
   // Templates may denormalize machine photos, so revalidate the builder + workouts.
   revalidatePath("/admin/machines");
   revalidatePath("/admin/workouts");
-  return { error: null };
+  return { error: null, machine: result as Machine | null };
 }
 
 export async function deleteMachine(machineId: string) {

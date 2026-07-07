@@ -17,20 +17,28 @@ export async function assignWorkout(
   userId: string,
   templateId: string,
   date: string
-) {
+): Promise<{
+  error: string | null;
+  item?: { id: string; scheduled_date: string; template_id: string };
+}> {
   await requireStaffOrAdmin();
   const supabase = serviceClient();
   // Upsert — replace if a workout already exists for that day.
-  const { error } = await supabase
+  const { error, data } = await supabase
     .from("scheduled_workouts")
     .upsert(
       { user_id: userId, template_id: templateId, scheduled_date: date },
       { onConflict: "user_id,scheduled_date" }
-    );
+    )
+    .select("id, scheduled_date, template_id")
+    .single();
 
   if (error) return { error: error.message };
   revalidatePath("/admin/clients");
-  return { error: null };
+  return {
+    error: null,
+    item: data as { id: string; scheduled_date: string; template_id: string },
+  };
 }
 
 // Remove a scheduled workout.
