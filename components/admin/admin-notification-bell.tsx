@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Bell, CreditCard, Megaphone, MessageCircle } from "lucide-react";
 import type { Notification, NotificationType } from "@/lib/types";
-import { markAllNotificationsRead } from "@/lib/notification-actions";
+import { markAllNotificationsRead, markNotificationRead } from "@/lib/notification-actions";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
