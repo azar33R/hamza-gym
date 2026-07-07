@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase/client";
 import { normalizeEGPhone } from "@/lib/phone";
+import { useI18n } from "@/lib/i18n/client";
 
 type Mode = "phone" | "email";
 
 export function SignupForm() {
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("phone");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -32,7 +34,7 @@ export function SignupForm() {
     if (mode === "phone") {
       const normalized = normalizeEGPhone(phone);
       if (!normalized) {
-        toast.error("Enter a valid Egyptian number, e.g. 01006857031");
+        toast.error(t("auth.phone_invalid"));
         setLoading(false);
         return;
       }
@@ -56,7 +58,7 @@ export function SignupForm() {
       return;
     }
 
-    toast.success("Account created! Welcome aboard.");
+    toast.success(t("auth.account_created"));
     router.push("/dashboard");
     router.refresh();
   }
@@ -66,23 +68,23 @@ export function SignupForm() {
       <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
         <TabsList className="w-full">
           <TabsTrigger value="phone" className="flex-1">
-            🇪🇬 Phone
+            🇪🇬 {t("auth.phone")}
           </TabsTrigger>
           <TabsTrigger value="email" className="flex-1">
-            Email
+            {t("auth.email")}
           </TabsTrigger>
         </TabsList>
       </Tabs>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="full-name">Full Name</Label>
+          <Label htmlFor="full-name">{t("auth.full_name")}</Label>
           <Input
             id="full-name"
             type="text"
             required
             autoComplete="name"
-            placeholder="Your full name"
+            placeholder={t("auth.full_name_placeholder")}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
           />
@@ -90,7 +92,7 @@ export function SignupForm() {
 
         {mode === "phone" ? (
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">{t("auth.phone")}</Label>
             <div className="flex items-center gap-2">
               <span className="flex h-10 items-center rounded-md border border-input bg-zinc-900 px-3 text-sm font-medium text-zinc-300">
                 +20
@@ -101,25 +103,25 @@ export function SignupForm() {
                 required
                 inputMode="numeric"
                 autoComplete="tel-national"
-                placeholder="01006857031"
+                placeholder={t("auth.phone_example")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="flex-1"
               />
             </div>
             <p className="text-xs text-zinc-500">
-              We&apos;ll use this as your username. No SMS needed.
+              {t("auth.phone_hint")}
             </p>
           </div>
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.email")}</Label>
             <Input
               id="email"
               type="email"
               required
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.email_placeholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -127,20 +129,20 @@ export function SignupForm() {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("auth.password")}</Label>
           <Input
             id="password"
             type="password"
             required
             minLength={6}
             autoComplete="new-password"
-            placeholder="At least 6 characters"
+            placeholder={t("auth.password_min")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
         <Button type="submit" size="lg" className="w-full" disabled={loading}>
-          {loading ? "Creating account…" : "Create account"}
+          {loading ? t("auth.creating_account") : t("auth.create_account")}
         </Button>
       </form>
     </div>
