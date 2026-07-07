@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#84cc16"/>
+  <g fill="none" stroke="#09090b" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+    <!-- dumbbell: two weighted ends + a horizontal bar -->
+    <line x1="156" y1="256" x2="356" y2="256"/>
+    <line x1="120" y1="206" x2="120" y2="306"/>
+    <line x1="160" y1="180" x2="160" y2="332"/>
+    <line x1="352" y1="180" x2="352" y2="332"/>
+    <line x1="392" y1="206" x2="392" y2="306"/>
+  </g>
+</svg>

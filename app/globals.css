@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dark theme enforced — zinc-950 background, zinc-900 surfaces, lime-500 accent */
+    --background: 240 10% 4%; /* zinc-950 */
+    --foreground: 0 0% 98%; /* zinc-50 */
+
+    --card: 240 10% 9%; /* zinc-900 */
+    --card-foreground: 0 0% 98%; /* zinc-50 */
+
+    --popover: 240 10% 9%; /* zinc-900 */
+    --popover-foreground: 0 0% 98%; /* zinc-50 */
+
+    --primary: 83 81% 54%; /* lime-500 */
+    --primary-foreground: 240 10% 4%; /* zinc-950 */
+
+    --secondary: 240 4% 16%; /* zinc-800 */
+    --secondary-foreground: 0 0% 98%; /* zinc-50 */
+
+    --muted: 240 4% 16%; /* zinc-800 */
+    --muted-foreground: 240 5% 65%; /* zinc-400 */
+
+    --accent: 83 81% 54%; /* lime-500 */
+    --accent-foreground: 240 10% 4%; /* zinc-950 */
+
+    --destructive: 0 72% 51%; /* red-500 */
+    --destructive-foreground: 0 0% 98%; /* zinc-50 */
+
+    --border: 240 4% 16%; /* zinc-800 */
+    --input: 240 4% 16%; /* zinc-800 */
+    --ring: 83 81% 54%; /* lime-500 */
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    color-scheme: dark;
+    overflow-x: hidden;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    width: 100%;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    overscroll-behavior: none;
+  }
+}
+
+@layer components {
+  .ripple {
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ripple::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .ripple:active::after {
+    opacity: 1;
+    transition: opacity 0s;
+  }
+}
