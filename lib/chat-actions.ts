@@ -119,6 +119,10 @@ export async function markThreadRead(
     .eq("recipient_id", userId)
     .is("read_at", null);
   if (error) return { error: error.message };
+
+  // Invalidate the inbox so its per-contact unread badges clear immediately
+  // when the user navigates back (client-side nav otherwise serves stale RSC).
+  revalidatePath("/chat");
   return { error: null };
 }
 
