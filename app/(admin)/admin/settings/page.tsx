@@ -8,6 +8,7 @@ import {
   Megaphone,
   ShoppingBag,
   Sparkles,
+  Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { requireStaffOrAdmin } from "@/lib/admin";
@@ -104,6 +105,17 @@ export default async function SettingsPage() {
                 <div className="text-start">
                   <p className="text-sm font-medium text-zinc-50">{t("admin_settings.cosmetics")}</p>
                   <p className="text-xs text-zinc-500">{t("admin_settings.cosmetics_desc")}</p>
+                </div>
+              </Link>
+            </Button>
+          )}
+          {isAdmin && (
+            <Button asChild variant="outline" className="h-auto justify-start gap-3 px-4 py-3">
+              <Link href="/admin/codes">
+                <Ticket className="h-4 w-4 text-primary" />
+                <div className="text-start">
+                  <p className="text-sm font-medium text-zinc-50">{t("admin_settings.codes")}</p>
+                  <p className="text-xs text-zinc-500">{t("admin_settings.codes_desc")}</p>
                 </div>
               </Link>
             </Button>

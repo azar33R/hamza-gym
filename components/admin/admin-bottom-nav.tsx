@@ -35,7 +35,7 @@ export function AdminBottomNav({ role }: { role: UserRole }) {
   const pathname = usePathname();
   const { t } = useI18n();
 
-  const settingsPaths = ["/admin/settings", "/admin/machines", "/admin/plans", "/admin/comms", "/admin/shop", "/admin/cosmetics"];
+  const settingsPaths = ["/admin/settings", "/admin/machines", "/admin/plans", "/admin/comms", "/admin/shop", "/admin/cosmetics", "/admin/codes"];
   const onSettingsArea = settingsPaths.some((p) => pathname.startsWith(p));
 
   return (

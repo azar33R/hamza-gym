@@ -80,6 +80,21 @@ export type Plan = {
   created_at: string;
 };
 
+export type SubscriptionCode = {
+  id: string;
+  code: string;
+  plan_type: PlanType;
+  label: string | null;
+  max_uses: number;
+  used_count: number;
+  created_by: string | null;
+  redeemed_by: string | null;
+  redeemed_at: string | null;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
 export type Exercise = {
   name: string;
   sets: number;

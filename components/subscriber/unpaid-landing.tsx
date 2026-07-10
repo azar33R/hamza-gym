@@ -3,6 +3,7 @@ import { CreditCard, MessageCircle, MapPin, Dumbbell } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { config } from "@/lib/config";
 import { SignOutButton } from "@/components/auth/signout-button";
+import { RedeemCodeCard } from "@/components/subscriber/redeem-code-card";
 
 export function UnpaidLanding({ fullName }: { fullName: string | null }) {
   const { t } = useI18n();
@@ -98,6 +99,10 @@ export function UnpaidLanding({ fullName }: { fullName: string | null }) {
               </div>
             </div>
           </Link>
+        </div>
+
+        <div className="mt-4">
+          <RedeemCodeCard />
         </div>
       </div>
     </div>
