@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Loader2,
-  Camera,
   UserCircle2,
   Dumbbell,
   LayoutGrid,
@@ -23,10 +22,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { saveOnboarding } from "@/lib/onboarding-actions";
-import { uploadFacePhoto } from "@/lib/storage";
 import type { WorkoutPath } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
+import { PhotoUploader } from "@/components/subscriber/photo-uploader";
 
 // Mandatory onboarding wizard. Step 1 physical details, Step 2 face photo,
 // Step 3 workout path.
@@ -34,7 +33,6 @@ export function OnboardingForm({ fullName }: { fullName: string | null }) {
   const router = useRouter();
   const { t } = useI18n();
   const [pending, startTransition] = useTransition();
-  const [uploading, setUploading] = useState(false);
   const [step, setStep] = useState<0 | 1 | 2>(0);
 
   const [age, setAge] = useState("");
@@ -43,19 +41,6 @@ export function OnboardingForm({ fullName }: { fullName: string | null }) {
   const [gender, setGender] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [workoutPath, setWorkoutPath] = useState<WorkoutPath | null>(null);
-
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const res = await uploadFacePhoto(file);
-    setUploading(false);
-    if (res.error) toast.error(res.error);
-    else {
-      setPhotoUrl(res.url);
-      toast.success(t("onb.photo_uploaded"));
-    }
-  }
 
   function finish() {
     if (!workoutPath) {
@@ -201,42 +186,18 @@ export function OnboardingForm({ fullName }: { fullName: string | null }) {
         {step === 1 && (
           <div className="flex flex-1 flex-col">
             <h2 className="mb-4 text-lg font-semibold text-zinc-50">{t("onb.face_photo")}</h2>
-            {photoUrl ? (
-              <div className="relative mx-auto overflow-hidden rounded-2xl border border-border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photoUrl}
-                  alt={t("onb.face_photo_alt")}
-                  className="h-56 w-56 rounded-2xl object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => setPhotoUrl(null)}
-                  className="absolute end-2 top-2 rounded-md bg-zinc-950/80 px-2 py-1 text-xs text-zinc-200"
-                >
-                  {t("onb.retake")}
-                </button>
-              </div>
-            ) : (
-              <label className="mx-auto flex h-56 w-56 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/40 text-zinc-400 transition-colors hover:border-primary/50 hover:text-zinc-200">
-                {uploading ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                ) : (
-                  <Camera className="h-8 w-8" />
-                )}
-                <span className="text-sm">
-                  {uploading ? t("onb.uploading") : t("onb.take_photo")}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="user"
-                  className="hidden"
-                  onChange={handlePhoto}
-                  disabled={uploading}
-                />
-              </label>
-            )}
+            <div className="flex flex-1 flex-col items-center justify-center">
+              <PhotoUploader
+                value={photoUrl}
+                onUploaded={setPhotoUrl}
+                size={224}
+                shape="square"
+                takeLabel={t("photo.take")}
+                galleryLabel={t("photo.gallery")}
+                uploadingLabel={t("onb.uploading")}
+                uploadedLabel={t("onb.photo_uploaded")}
+              />
+            </div>
 
             <div className="mt-auto flex gap-2 pt-6">
               <Button variant="ghost" onClick={() => setStep(0)} className="flex-1">

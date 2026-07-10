@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Dumbbell, Home, Trophy, User, MessageCircle } from "lucide-react";
+import { Dumbbell, Home, Trophy, User, MessageCircle, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChatUnreadBadge } from "@/components/subscriber/chat-unread-badge";
 import { useTabContext, type TabId } from "@/app/(subscriber)/tab-context";
@@ -12,6 +12,7 @@ const tabs: { href: string; labelKey: string; icon: typeof Home; tabId?: TabId }
   { href: "/dashboard", labelKey: "nav.home", icon: Home, tabId: "dashboard" },
   { href: "/workout", labelKey: "nav.workouts", icon: Dumbbell, tabId: "workout" },
   { href: "/leaderboard", labelKey: "nav.ranks", icon: Trophy, tabId: "leaderboard" },
+  { href: "/nutrition", labelKey: "nav.nutrition", icon: UtensilsCrossed },
   { href: "/chat", labelKey: "nav.chat", icon: MessageCircle },
   { href: "/settings", labelKey: "nav.profile", icon: User },
 ];

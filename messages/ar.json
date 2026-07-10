@@ -629,6 +629,20 @@
   "nav.settings": "الإعدادات",
   "nav.triage": "المراجعات",
   "nav.workouts": "التمارين",
+  "nav.nutrition": "الأكل",
+
+  "nutrition.title": "ماسح الأكل",
+  "nutrition.subtitle": "صوّر أكلتك تشوف السعرات والبروتين والكربوهيدرات والدهون.",
+  "nutrition.tap_to_capture": "دوس تلتقط أو ترفع صورة الأكل",
+  "nutrition.analyze": "حلل الأكلة",
+  "nutrition.analyzing": "بيتحلل…",
+  "nutrition.unnamed": "أكلتك",
+  "nutrition.healthy": "صحي",
+  "nutrition.unhealthy": "مش صحي",
+  "nutrition.calories": "سعرات",
+  "nutrition.protein": "بروتين",
+  "nutrition.carbs": "كربوهيدرات",
+  "nutrition.fat": "دهون",
 
   "notif.aria": "الإشعارات",
   "notif.mark_all_read": "تحديد الكل كمقروء",
@@ -817,6 +831,9 @@
   "settings.updating_pw": "بيحدث الباسورد",
   "settings.uploading": "بيرفع الصورة…",
   "settings.weight": "الوزن (كجم)",
+
+  "photo.take": "التقط صورة",
+  "photo.gallery": "ارفع من المعرض",
 
   "shop.approved": "مقبول",
   "shop.empty": "المتجر فاضي — ابقى شيك بعدين.",

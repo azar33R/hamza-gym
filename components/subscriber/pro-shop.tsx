@@ -2,13 +2,21 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ShoppingBag, CreditCard, Clock, Package } from "lucide-react";
+import { ShoppingBag, CreditCard, Clock, Package, ImageOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n/client";
 import { createOrder } from "@/lib/shop-actions";
@@ -81,6 +89,122 @@ function OrderDialog({ orders }: { orders: (ShopOrder & { product_name: string |
   );
 }
 
+function BuyDialog({
+  product,
+  onOrdered,
+}: {
+  product: ShopProduct;
+  onOrdered: () => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactNotes, setContactNotes] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function reset() {
+    setContactName("");
+    setContactPhone("");
+    setContactNotes("");
+  }
+
+  function handleBuy() {
+    if (!contactName.trim() || !contactPhone.trim()) {
+      toast.error(t("shop.enter_contact_info"));
+      return;
+    }
+    startTransition(async () => {
+      const res = await createOrder({
+        productId: product.id,
+        contactName: contactName.trim(),
+        contactPhone: contactPhone.trim(),
+        contactNotes: contactNotes.trim(),
+      });
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success(t("shop.order_placed"));
+        reset();
+        setOpen(false);
+        onOrdered();
+      }
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+      <DialogTrigger asChild>
+        <Button className="w-full gap-2" size="sm">
+          <CreditCard className="h-4 w-4" /> {t("shop.place_order")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5 text-primary" />
+            {product.name}
+          </DialogTitle>
+          <DialogDescription>
+            {product.price_egp} EGP · {t("shop.contact_info")}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor={`bd-name-${product.id}`} className="text-xs text-zinc-500">
+              {t("shop.contact_name")}
+            </Label>
+            <Input
+              id={`bd-name-${product.id}`}
+              placeholder={t("shop.contact_name_placeholder")}
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`bd-phone-${product.id}`} className="text-xs text-zinc-500">
+              {t("shop.contact_phone")}
+            </Label>
+            <Input
+              id={`bd-phone-${product.id}`}
+              type="tel"
+              placeholder={t("shop.contact_phone_placeholder")}
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`bd-notes-${product.id}`} className="text-xs text-zinc-500">
+              {t("shop.contact_notes")}
+            </Label>
+            <Textarea
+              id={`bd-notes-${product.id}`}
+              placeholder={t("shop.contact_notes_placeholder")}
+              value={contactNotes}
+              onChange={(e) => setContactNotes(e.target.value)}
+              rows={2}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <DialogClose asChild>
+            <Button variant="ghost">{t("common.cancel")}</Button>
+          </DialogClose>
+          <Button onClick={handleBuy} disabled={pending} className="gap-2">
+            {pending ? t("shop.processing") : (
+              <>
+                <CreditCard className="h-4 w-4" /> {t("shop.place_order")}
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function ProShop({
   products,
   orders,
@@ -90,36 +214,6 @@ export function ProShop({
   orders: (ShopOrder & { product_name: string | null })[];
 }) {
   const { t } = useI18n();
-  const [buyingId, setBuyingId] = useState<string | null>(null);
-  const [contactName, setContactName] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [contactNotes, setContactNotes] = useState("");
-  const [pending, startTransition] = useTransition();
-
-  async function handleBuy(productId: string) {
-    if (!contactName.trim() || !contactPhone.trim()) {
-      toast.error(t("shop.enter_contact_info"));
-      return;
-    }
-    setBuyingId(productId);
-    startTransition(async () => {
-      const res = await createOrder({
-        productId,
-        contactName: contactName.trim(),
-        contactPhone: contactPhone.trim(),
-        contactNotes: contactNotes.trim(),
-      });
-      if (res.error) {
-        toast.error(res.error);
-      } else {
-        toast.success(t("shop.order_placed"));
-        setContactName("");
-        setContactPhone("");
-        setContactNotes("");
-      }
-      setBuyingId(null);
-    });
-  }
 
   return (
     <div className="space-y-5">
@@ -139,93 +233,52 @@ export function ProShop({
           {t("shop.shop_empty")}
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {products.map((product) => (
-            <div key={product.id} className="rounded-2xl border border-white/5 bg-zinc-900/60 p-5">
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-lg font-bold text-zinc-50">{product.name}</h3>
-                  {product.description && (
-                    <p className="mt-1 text-sm text-zinc-400">{product.description}</p>
-                  )}
-                </div>
-                <p className="shrink-0 text-xl font-black text-primary">{product.price_egp} EGP</p>
-              </div>
-
-              {product.image_url && (
-                <div className="relative mb-4 h-40 w-full overflow-hidden rounded-xl">
+            <div
+              key={product.id}
+              className="flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/60"
+            >
+              <div className="relative h-40 w-full bg-zinc-950">
+                {product.image_url ? (
                   <Image
                     src={product.image_url}
                     alt={product.name}
                     fill
-                    sizes="(max-width: 768px) 100vw, 480px"
+                    sizes="(max-width: 640px) 100vw, 320px"
                     className="object-cover"
                     unoptimized
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-zinc-700">
+                    <ImageOff className="h-8 w-8" />
+                  </div>
+                )}
+                <span className="absolute end-3 top-3 rounded-full bg-zinc-950/80 px-2.5 py-1 text-sm font-black text-primary">
+                  {product.price_egp} EGP
+                </span>
+              </div>
 
-              {product.stock != null && (
-                <p className="mb-3 text-xs text-zinc-500">
-                  {product.stock > 0 ? t("shop.in_stock", { count: product.stock }) : t("shop.out_of_stock")}
-                </p>
-              )}
-
-              <div className="space-y-3 rounded-xl border border-border bg-card p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                  {t("shop.contact_info")}
-                </p>
-                <div className="space-y-2">
-                  <div>
-                    <Label htmlFor={`name-${product.id}`} className="text-xs text-zinc-500">
-                      {t("shop.contact_name")}
-                    </Label>
-                    <Input
-                      id={`name-${product.id}`}
-                      placeholder={t("shop.contact_name_placeholder")}
-                      value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`phone-${product.id}`} className="text-xs text-zinc-500">
-                      {t("shop.contact_phone")}
-                    </Label>
-                    <Input
-                      id={`phone-${product.id}`}
-                      type="tel"
-                      placeholder={t("shop.contact_phone_placeholder")}
-                      value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`notes-${product.id}`} className="text-xs text-zinc-500">
-                      {t("shop.contact_notes")}
-                    </Label>
-                    <Textarea
-                      id={`notes-${product.id}`}
-                      placeholder={t("shop.contact_notes_placeholder")}
-                      value={contactNotes}
-                      onChange={(e) => setContactNotes(e.target.value)}
-                      rows={2}
-                    />
-                  </div>
+              <div className="flex flex-1 flex-col p-4">
+                <div className="mb-1 flex items-start justify-between gap-2">
+                  <h3 className="text-base font-bold text-zinc-50">{product.name}</h3>
                 </div>
-                <Button
-                  onClick={() => handleBuy(product.id)}
-                  disabled={pending || buyingId === product.id}
-                  className="w-full gap-2"
-                  size="lg"
-                >
-                  {buyingId === product.id ? (
-                    t("shop.processing")
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4" /> {t("shop.place_order")}
-                    </>
+                {product.description && (
+                  <p className="mb-3 line-clamp-2 text-sm text-zinc-400">
+                    {product.description}
+                  </p>
+                )}
+
+                <div className="mt-auto space-y-3">
+                  {product.stock != null && (
+                    <p className="text-xs text-zinc-500">
+                      {product.stock > 0
+                        ? t("shop.in_stock", { count: product.stock })
+                        : t("shop.out_of_stock")}
+                    </p>
                   )}
-                </Button>
+                  <BuyDialog product={product} onOrdered={() => {}} />
+                </div>
               </div>
             </div>
           ))}

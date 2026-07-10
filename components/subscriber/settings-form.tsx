@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Camera, LogOut, KeyRound } from "lucide-react";
+import { Loader2, LogOut, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +14,8 @@ import {
   updateAuthEmail,
   updateAuthPassword,
 } from "@/lib/auth-update-actions";
-import { uploadFacePhoto } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
+import { PhotoUploader } from "@/components/subscriber/photo-uploader";
 import type { Profile } from "@/lib/types";
 
 export function SettingsForm({
@@ -31,7 +31,6 @@ export function SettingsForm({
   const router = useRouter();
   const supabase = createClient();
   const [pending, startTransition] = useTransition();
-  const [uploading, setUploading] = useState(false);
 
   const [height, setHeight] = useState(String(profile?.height_cm ?? ""));
   const [weight, setWeight] = useState(String(profile?.weight_kg ?? ""));
@@ -49,19 +48,6 @@ export function SettingsForm({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [pwPending, startPwTransition] = useTransition();
-
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const res = await uploadFacePhoto(file);
-    setUploading(false);
-    if (res.error) toast.error(res.error);
-    else {
-      setPhotoUrl(res.url);
-      toast.success(t("settings.photo_uploaded"));
-    }
-  }
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -149,33 +135,16 @@ export function SettingsForm({
         <h2 className="mb-4 text-sm font-semibold text-zinc-200">
           {t("settings.profile_photo")}
         </h2>
-        <div className="flex flex-col items-center gap-4">
-          {photoUrl ? (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoUrl}
-                alt="Your face"
-                className="h-32 w-32 rounded-full object-cover ring-2 ring-primary/30"
-              />
-            </div>
-          ) : (
-            <div className="flex h-32 w-32 items-center justify-center rounded-full bg-zinc-800 ring-2 ring-border">
-              <Camera className="h-10 w-10 text-zinc-500" />
-            </div>
-          )}
-          <label className="cursor-pointer rounded-lg border border-border bg-zinc-800/50 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-800">
-            {uploading ? t("settings.uploading") : t("settings.change_photo")}
-            <input
-              type="file"
-              accept="image/*"
-              capture="user"
-              className="hidden"
-              onChange={handlePhoto}
-              disabled={uploading}
-            />
-          </label>
-        </div>
+        <PhotoUploader
+          value={photoUrl}
+          onUploaded={setPhotoUrl}
+          size={128}
+          shape="circle"
+          takeLabel={t("photo.take")}
+          galleryLabel={t("photo.gallery")}
+          uploadingLabel={t("settings.uploading")}
+          uploadedLabel={t("settings.photo_uploaded")}
+        />
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">

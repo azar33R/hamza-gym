@@ -629,6 +629,20 @@
   "nav.settings": "Settings",
   "nav.triage": "Triage",
   "nav.workouts": "Workouts",
+  "nav.nutrition": "Nutrition",
+
+  "nutrition.title": "Food Scanner",
+  "nutrition.subtitle": "Snap a photo of your meal to see calories, protein, carbs and fat.",
+  "nutrition.tap_to_capture": "Tap to capture or upload a food photo",
+  "nutrition.analyze": "Analyze Meal",
+  "nutrition.analyzing": "Analyzing…",
+  "nutrition.unnamed": "Your meal",
+  "nutrition.healthy": "Healthy",
+  "nutrition.unhealthy": "Not healthy",
+  "nutrition.calories": "Calories",
+  "nutrition.protein": "Protein",
+  "nutrition.carbs": "Carbs",
+  "nutrition.fat": "Fat",
 
   "notif.aria": "Notifications",
   "notif.mark_all_read": "Mark all read",
@@ -817,6 +831,9 @@
   "settings.updating_pw": "Update Password",
   "settings.uploading": "Uploading…",
   "settings.weight": "Weight (kg)",
+
+  "photo.take": "Take Photo",
+  "photo.gallery": "Upload from Gallery",
 
   "shop.approved": "Approved",
   "shop.empty": "Shop is empty — check back later.",
