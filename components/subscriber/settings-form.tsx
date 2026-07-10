@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, LogOut, KeyRound } from "lucide-react";
+import { Loader2, LogOut, KeyRound, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,9 @@ import {
 } from "@/lib/auth-update-actions";
 import { createClient } from "@/lib/supabase/client";
 import { PhotoUploader } from "@/components/subscriber/photo-uploader";
+import { LanguageToggle } from "@/components/language-toggle";
 import type { Profile } from "@/lib/types";
+import type { Tier, UserRole } from "@/lib/constants";
 
 export function SettingsForm({
   profile,
@@ -122,31 +124,63 @@ export function SettingsForm({
     });
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-50">{t("settings.profile")}</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          {profile?.full_name ?? "Athlete"}
-        </p>
-      </div>
+  const fullName = profile?.full_name ?? t("settings.profile_title");
+  const roleLabel = profile?.role ? t(`role.${profile.role as UserRole}`) : "";
+  const tierLabel = profile?.current_tier
+    ? t(`tier.${profile.current_tier as Tier}`)
+    : null;
+  const points = profile?.points ?? null;
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+      })
+    : null;
 
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="mb-4 text-sm font-semibold text-zinc-200">
-          {t("settings.profile_photo")}
-        </h2>
+  return (
+    <div className="space-y-5">
+      {/* Hero */}
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-b from-primary/10 via-card to-card p-6 text-center">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
         <PhotoUploader
           value={photoUrl}
           onUploaded={setPhotoUrl}
-          size={128}
+          size={112}
           shape="circle"
           takeLabel={t("photo.take")}
           galleryLabel={t("photo.gallery")}
           uploadingLabel={t("settings.uploading")}
           uploadedLabel={t("settings.photo_uploaded")}
         />
+        <h1 className="mt-4 text-xl font-bold tracking-tight text-zinc-50">
+          {fullName}
+        </h1>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          {roleLabel && (
+            <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold capitalize text-primary">
+              {roleLabel}
+            </span>
+          )}
+          {tierLabel && (
+            <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-xs font-semibold capitalize text-zinc-300">
+              {tierLabel}
+            </span>
+          )}
+        </div>
+        {memberSince && (
+          <p className="mt-2 text-xs text-zinc-500">
+            {t("profile.member_since", { date: memberSince })}
+          </p>
+        )}
+        {points != null && (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-zinc-950/40 px-3 py-1">
+            <span className="text-base font-bold text-primary">{points}</span>
+            <span className="text-xs text-zinc-400">{t("profile.points")}</span>
+          </div>
+        )}
       </section>
 
+      {/* Physical details */}
       <section className="rounded-2xl border border-border bg-card p-5">
         <h2 className="mb-4 text-sm font-semibold text-zinc-200">
           {t("settings.physical_details")}
@@ -190,7 +224,7 @@ export function SettingsForm({
         </div>
       </section>
 
-      {/* ---- Contact & Security ---- */}
+      {/* Contact & security */}
       <section className="rounded-2xl border border-border bg-card p-5">
         <h2 className="mb-4 text-sm font-semibold text-zinc-200">
           {t("settings.contact_security")}
@@ -241,7 +275,18 @@ export function SettingsForm({
         </div>
       </section>
 
-      {/* ---- Change Password (collapsed by default) ---- */}
+      {/* Language */}
+      <section className="flex items-center justify-between rounded-2xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2">
+          <Globe className="h-4 w-4 text-zinc-400" />
+          <h2 className="text-sm font-semibold text-zinc-200">
+            {t("lang.toggle")}
+          </h2>
+        </div>
+        <LanguageToggle />
+      </section>
+
+      {/* Change password (collapsed by default) */}
       <section className="rounded-2xl border border-border bg-card p-5">
         {!showPassword ? (
           <Button
@@ -255,7 +300,7 @@ export function SettingsForm({
         ) : (
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-zinc-200">
-            {t("settings.change_password")}
+              {t("settings.change_password")}
             </h2>
             <div className="space-y-2">
               <Label htmlFor="s-current-pw">{t("settings.current_password")}</Label>

@@ -824,6 +824,8 @@
   "settings.profile": "البروفايل",
   "settings.profile_photo": "الصورة الشخصية",
   "settings.profile_title": "البروفايل",
+  "profile.member_since": "عضو منذ {date}",
+  "profile.points": "نقاط",
   "settings.profile_updated": "تم تحديث البروفايل.",
   "settings.save_changes": "حفظ التغييرات",
   "settings.save_contact": "حفظ بيانات التواصل",
