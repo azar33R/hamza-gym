@@ -174,20 +174,22 @@ export function WorkoutChooser({
       )}
 
       <Tabs defaultValue="coach">
-        <TabsList className="w-full">
-          <TabsTrigger value="coach" className="flex-1 gap-1.5">
-            <UserCheck className="h-3.5 w-3.5" /> {t("workout.tab_coach")}
-          </TabsTrigger>
-          <TabsTrigger value="presets" className="flex-1 gap-1.5">
-            <BookOpen className="h-3.5 w-3.5" /> {t("workout.tab_presets")}
-          </TabsTrigger>
-          <TabsTrigger value="mine" className="flex-1 gap-1.5">
-            <Dumbbell className="h-3.5 w-3.5" /> {t("workout.tab_my_plans")}
-          </TabsTrigger>
-          <TabsTrigger value="week" className="flex-1 gap-1.5">
-            <CalendarDays className="h-3.5 w-3.5" /> {t("workout.tab_week")}
-          </TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="w-max min-w-full">
+            <TabsTrigger value="coach" className="shrink-0 gap-1.5">
+              <UserCheck className="h-3.5 w-3.5" /> {t("workout.tab_coach")}
+            </TabsTrigger>
+            <TabsTrigger value="presets" className="shrink-0 gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" /> {t("workout.tab_presets")}
+            </TabsTrigger>
+            <TabsTrigger value="mine" className="shrink-0 gap-1.5">
+              <Dumbbell className="h-3.5 w-3.5" /> {t("workout.tab_my_plans")}
+            </TabsTrigger>
+            <TabsTrigger value="week" className="shrink-0 gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" /> {t("workout.tab_week")}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="coach" className="space-y-3">
           {coachTemplate && (
