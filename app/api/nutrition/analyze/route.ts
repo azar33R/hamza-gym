@@ -4,55 +4,99 @@ import type { NutritionResult } from "@/lib/nutrition";
 export const runtime = "nodejs";
 
 // ----------------------------------------------------------------------------
-//  Nutrition analysis endpoint.
+//  Food photo -> nutrition analysis via Google Gemini (vision + JSON mode).
 //
-//  When NUTRITION_API_URL is set, the uploaded image is forwarded to that
-//  external vision API and its response is mapped onto NutritionResult via
-//  normalizeExternal(). Until the API is provided, a mock result is returned
-//  so the UI can be built and tested end-to-end.
-//
-//  Expected external response (adjust normalizeExternal to match your API):
-//    {
-//      "name": string,
-//      "calories": number,
-//      "protein_g": number,
-//      "carbs_g": number,
-//      "fat_g": number,
-//      "healthy": boolean,
-//      "confidence": number | null,
-//      "notes": string | null
-//    }
+//  Uses gemini-3.1-flash-lite by default (override with GEMINI_MODEL). Both
+//  provided API keys are tried in order (GEMINI_API_KEY, then GEMINI_API_KEY_2)
+//  so a quota/limit on one falls back to the other. The image is sent inline
+//  and Gemini is forced to reply with JSON matching NutritionResult.
 // ----------------------------------------------------------------------------
 
-function mockResult(): NutritionResult {
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+
+const RESPONSE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    name: { type: "STRING" },
+    calories: { type: "NUMBER" },
+    protein_g: { type: "NUMBER" },
+    carbs_g: { type: "NUMBER" },
+    fat_g: { type: "NUMBER" },
+    healthy: { type: "BOOLEAN" },
+    confidence: { type: "NUMBER" },
+    notes: { type: "STRING" },
+  },
+  required: ["calories", "protein_g", "carbs_g", "fat_g", "healthy"],
+} as const;
+
+function getKeys(): string[] {
+  return [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_2].filter(
+    (k): k is string => Boolean(k)
+  );
+}
+
+function normalize(data: unknown): NutritionResult {
+  const d = (data ?? {}) as Record<string, unknown>;
+  const num = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
   return {
-    name: null,
-    calories: 0,
-    protein_g: 0,
-    carbs_g: 0,
-    fat_g: 0,
-    healthy: false,
-    confidence: null,
-    notes: "DEMO: set NUTRITION_API_URL to get real results.",
+    name: typeof d.name === "string" && d.name ? d.name : null,
+    calories: num(d.calories),
+    protein_g: num(d.protein_g),
+    carbs_g: num(d.carbs_g),
+    fat_g: num(d.fat_g),
+    healthy: Boolean(d.healthy),
+    confidence: d.confidence != null ? num(d.confidence) : null,
+    notes: typeof d.notes === "string" && d.notes ? d.notes : null,
   };
 }
 
-// TODO: map the real provider response onto NutritionResult once the API
-// (and its exact field names) are known.
-function normalizeExternal(_data: unknown): NutritionResult {
-  // Example:
-  // const d = _data as any;
-  // return {
-  //   name: d.name ?? null,
-  //   calories: Number(d.calories) || 0,
-  //   protein_g: Number(d.protein_g) || 0,
-  //   carbs_g: Number(d.carbs_g) || 0,
-  //   fat_g: Number(d.fat_g) || 0,
-  //   healthy: Boolean(d.healthy),
-  //   confidence: d.confidence ?? null,
-  //   notes: d.notes ?? null,
-  // };
-  return mockResult();
+async function analyzeWithGemini(
+  key: string,
+  base64: string,
+  mime: string
+): Promise<NutritionResult> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { inline_data: { mime_type: mime, data: base64 } },
+            {
+              text:
+                "You are a nutrition analyzer. Look at this food image and estimate its nutrition. Respond ONLY with the requested JSON.",
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: RESPONSE_SCHEMA,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Gemini ${res.status}: ${txt.slice(0, 200)}`);
+  }
+
+  const json = await res.json();
+  const text: string | undefined =
+    json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Empty response from Gemini.");
+
+  try {
+    return normalize(JSON.parse(text));
+  } catch {
+    throw new Error("Gemini returned invalid JSON.");
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -63,35 +107,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing 'file'." }, { status: 400 });
   }
 
-  const apiUrl = process.env.NUTRITION_API_URL;
-  if (apiUrl) {
+  const mime = file.type || "image/jpeg";
+  const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+
+  const keys = getKeys();
+  if (keys.length === 0) {
+    return NextResponse.json(
+      { error: "Gemini API key not configured (set GEMINI_API_KEY)." },
+      { status: 500 }
+    );
+  }
+
+  let lastErr: unknown;
+  for (const key of keys) {
     try {
-      const fd = new FormData();
-      fd.append("file", file, file.name);
-      const headers: Record<string, string> = {};
-      if (process.env.NUTRITION_API_KEY) {
-        headers["Authorization"] = `Bearer ${process.env.NUTRITION_API_KEY}`;
-      }
-      const upstream = await fetch(apiUrl, {
-        method: "POST",
-        body: fd,
-        headers,
-      });
-      if (!upstream.ok) {
-        return NextResponse.json(
-          { error: "Nutrition provider error." },
-          { status: 502 }
-        );
-      }
-      const data = await upstream.json();
-      return NextResponse.json(normalizeExternal(data));
-    } catch {
-      return NextResponse.json(
-        { error: "Failed to reach nutrition provider." },
-        { status: 502 }
-      );
+      const result = await analyzeWithGemini(key, base64, mime);
+      return NextResponse.json(result);
+    } catch (e) {
+      lastErr = e;
     }
   }
 
-  return NextResponse.json(mockResult());
+  return NextResponse.json(
+    { error: lastErr instanceof Error ? lastErr.message : "Gemini analysis failed." },
+    { status: 502 }
+  );
 }
