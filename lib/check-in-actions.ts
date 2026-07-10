@@ -55,6 +55,7 @@ export async function performCheckIn(
   if (checkInErr) return { error: checkInErr.message, checkedIn: false, pointsAwarded: 0 };
 
   revalidatePath("/dashboard");
+  revalidatePath("/workout");
   return {
     error: null,
     checkedIn: true,
