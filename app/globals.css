@@ -75,3 +75,26 @@
     transition: opacity 0s;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Android / WebView GPU compositor glitch fix.
+   backdrop-filter: blur() is the primary cause of the corrupted-texture /
+   static artifacts (repeated uncleared text, garbled strips) seen on mobile
+   Chromium. Disable it on coarse-pointer (touch) devices and fall back to an
+   opaque surface. Pointer-fine devices (mouse/trackpad) keep the blur.
+--------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  [class*="backdrop-blur"] {
+    --tw-backdrop-blur: blur(0) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* These variants were made translucent ONLY to reveal the blur — make them
+     solid now that the blur is gone. */
+  .supports-\[backdrop-filter\]\:bg-card\/80 {
+    background-color: hsl(var(--card)) !important;
+  }
+}
