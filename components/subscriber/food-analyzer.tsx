@@ -55,7 +55,7 @@ function MacroBar({
 }
 
 export function FoodAnalyzer() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -74,7 +74,7 @@ export function FoodAnalyzer() {
     if (!file) return;
     setLoading(true);
     try {
-      const res = await analyzeFoodImage(file);
+      const res = await analyzeFoodImage(file, locale);
       setResult(res);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Analysis failed.");

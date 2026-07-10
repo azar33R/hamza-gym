@@ -35,6 +35,13 @@ function getKeys(): string[] {
   );
 }
 
+// Map our app locale to a human language name for the prompt.
+function languageName(locale: string | null | undefined): string {
+  if (locale === "ar") return "Arabic";
+  if (locale === "en") return "English";
+  return "English";
+}
+
 function normalize(data: unknown): NutritionResult {
   const d = (data ?? {}) as Record<string, unknown>;
   const num = (v: unknown) => {
@@ -56,9 +63,18 @@ function normalize(data: unknown): NutritionResult {
 async function analyzeWithGemini(
   key: string,
   base64: string,
-  mime: string
+  mime: string,
+  language: string
 ): Promise<NutritionResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+
+  const prompt =
+    `You are a nutrition analyzer for a gym/fitness app. Examine this food image and estimate its nutrition. ` +
+    `Respond ONLY with the requested JSON.\n` +
+    `Rules:\n` +
+    `- Write all text fields ("name" and "notes") in ${language}.\n` +
+    `- "name": the dish name in ${language}.\n` +
+    `- "notes": a SHORT, practical health note about this meal (one sentence) — e.g. whether it fits a training diet, what to watch out for, or a quick tip. Do NOT describe what the dish looks like.`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -68,10 +84,7 @@ async function analyzeWithGemini(
         {
           parts: [
             { inline_data: { mime_type: mime, data: base64 } },
-            {
-              text:
-                "You are a nutrition analyzer. Look at this food image and estimate its nutrition. Respond ONLY with the requested JSON.",
-            },
+            { text: prompt },
           ],
         },
       ],
@@ -109,6 +122,9 @@ export async function POST(req: NextRequest) {
 
   const mime = file.type || "image/jpeg";
   const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+  const language = languageName(
+    typeof form.get("locale") === "string" ? (form.get("locale") as string) : null
+  );
 
   const keys = getKeys();
   if (keys.length === 0) {
@@ -121,7 +137,7 @@ export async function POST(req: NextRequest) {
   let lastErr: unknown;
   for (const key of keys) {
     try {
-      const result = await analyzeWithGemini(key, base64, mime);
+      const result = await analyzeWithGemini(key, base64, mime, language);
       return NextResponse.json(result);
     } catch (e) {
       lastErr = e;

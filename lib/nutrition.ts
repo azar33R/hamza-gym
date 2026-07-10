@@ -21,9 +21,14 @@ export type NutritionResult = {
 
 // Sends the captured food photo to our route handler, which talks to the
 // (future) external nutrition API. Returns a normalized result.
-export async function analyzeFoodImage(file: File): Promise<NutritionResult> {
+// `locale` (e.g. "ar" | "en") tells Gemini which language to reply in.
+export async function analyzeFoodImage(
+  file: File,
+  locale?: string
+): Promise<NutritionResult> {
   const fd = new FormData();
   fd.append("file", file, file.name);
+  if (locale) fd.append("locale", locale);
 
   const res = await fetch("/api/nutrition/analyze", {
     method: "POST",
