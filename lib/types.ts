@@ -28,6 +28,7 @@ export type Profile = {
   full_name: string | null;
   role: UserRole;
   subscription_status: SubscriptionStatus;
+  force_password_setup: boolean;
   created_at: string;
   // Phase 2 additions (nullable until populated):
   height_cm?: number | null;

@@ -47,6 +47,7 @@ export default async function SubscriberLayout({
       status={profile?.subscription_status ?? "inactive"}
       fullName={fullName}
       onboarded={isOnboarded(profile)}
+      needsPasswordSetup={profile?.force_password_setup ?? false}
     >
         <TabShellProvider>
           <main className="mx-auto w-full max-w-3xl overflow-x-hidden px-4 py-6 pb-28">

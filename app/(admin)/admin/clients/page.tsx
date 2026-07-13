@@ -6,6 +6,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ClientsDirectory } from "@/components/admin/clients-directory";
+import { AddMemberDialog } from "@/components/admin/add-member-dialog";
 import { requireStaffOrAdmin } from "@/lib/admin";
 import { getT } from "@/lib/i18n/server";
 import type { Plan } from "@/lib/types";
@@ -70,9 +71,12 @@ export default async function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-50">{t("clients.title")}</h1>
-        <p className="text-sm text-zinc-400">{t("clients.subtitle")}</p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-50">{t("clients.title")}</h1>
+          <p className="text-sm text-zinc-400">{t("clients.subtitle")}</p>
+        </div>
+        {viewerRole === "admin" && <AddMemberDialog />}
       </header>
 
       <Tabs defaultValue="active">
