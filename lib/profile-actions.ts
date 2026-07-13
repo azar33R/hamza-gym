@@ -44,3 +44,27 @@ export async function updateProfile(data: {
   revalidatePath("/leaderboard");
   return { error: null };
 }
+
+// Update only the member's profile photo (no height/weight validation).
+export async function updateFacePhoto(
+  facePhotoUrl: string | null
+): Promise<{ error: string | null }> {
+  const ssr = await createSSRClient();
+  const {
+    data: { user },
+  } = await ssr.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+
+  const supabase = serviceClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ face_photo_url: facePhotoUrl })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath("/leaderboard");
+  return { error: null };
+}
