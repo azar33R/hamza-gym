@@ -34,7 +34,7 @@ export function MachinePicker({
       .from("machine_library")
       .select("*")
       .order("name", { ascending: true })
-      .then(({ data }) => setMachines((data as Machine[]) ?? []));
+      .then(({ data }: { data: Machine[] | null }) => setMachines((data as Machine[]) ?? []));
   }, [open]);
 
   const filtered = q

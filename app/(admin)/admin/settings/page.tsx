@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   Sparkles,
   Ticket,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { requireStaffOrAdmin } from "@/lib/admin";
@@ -56,6 +57,15 @@ export default async function SettingsPage() {
           {t("admin_settings.management")}
         </h2>
         <div className="grid gap-2">
+          <Button asChild variant="outline" className="h-auto justify-start gap-3 px-4 py-3">
+            <Link href="/admin/settings/revenue">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <div className="text-start">
+                <p className="text-sm font-medium text-zinc-50">{t("admin_settings.revenue")}</p>
+                <p className="text-xs text-zinc-500">{t("admin_settings.revenue_desc")}</p>
+              </div>
+            </Link>
+          </Button>
           <Button asChild variant="outline" className="h-auto justify-start gap-3 px-4 py-3">
             <Link href="/admin/machines">
               <Cpu className="h-4 w-4 text-primary" />

@@ -100,7 +100,7 @@ export async function getDashboardData(): Promise<{
     .select("user_id")
     .not("completed_at", "is", null)
     .lte("completed_at", fiveMinAgo);
-  const goneIds = goneUsers?.map((r) => r.user_id) ?? [];
+  const goneIds = goneUsers?.map((r: { user_id: string }) => r.user_id) ?? [];
 
   let liveCount = 0;
   const countQuery = supabase
@@ -144,7 +144,9 @@ export async function getDashboardData(): Promise<{
     .eq("user_id", userId)
     .not("completed_at", "is", null);
 
-  const sessionDates = sessions?.map((s) => s.completed_at) ?? [];
+  const sessionDates = ((sessions ?? []) as { completed_at: string | null }[]).map(
+    (s) => s.completed_at
+  );
   const streak = computeStreak(sessionDates);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const workoutsThisWeek = sessionDates.filter(

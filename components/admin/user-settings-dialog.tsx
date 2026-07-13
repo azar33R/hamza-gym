@@ -112,7 +112,7 @@ export function UserSettingsDialog({
       .from("scheduled_workouts")
       .select("id, scheduled_date, template_id")
       .eq("user_id", user.id)
-      .then(({ data }) => setScheduled(data ?? []));
+      .then(({ data }: { data: { id: string; scheduled_date: string; template_id: string }[] | null }) => setScheduled(data ?? []));
   }, [open, user.id]);
 
   function run(

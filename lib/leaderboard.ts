@@ -48,7 +48,7 @@ export async function pointsLeaderboard(): Promise<LeaderboardRow[]> {
     return [];
   }
 
-  return data.map((p) => ({
+  return data.map((p: ProfileRankRow) => ({
     user_id: p.id,
     full_name: p.full_name,
     face_photo_url: p.face_photo_url,

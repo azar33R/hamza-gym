@@ -112,7 +112,7 @@ export default async function DashboardPage() {
     .select("user_id")
     .not("completed_at", "is", null)
     .lte("completed_at", fiveMinAgo);
-  const goneIds = goneUsers?.map((r) => r.user_id) ?? [];
+  const goneIds = goneUsers?.map((r: { user_id: string }) => r.user_id) ?? [];
 
   let liveCount: number | null = null;
   if (goneIds.length > 0) {
@@ -162,7 +162,9 @@ export default async function DashboardPage() {
     .eq("user_id", user!.id)
     .not("completed_at", "is", null);
 
-  const sessionDates = sessions?.map((s) => s.completed_at) ?? [];
+  const sessionDates = ((sessions ?? []) as { completed_at: string | null }[]).map(
+    (s) => s.completed_at
+  );
   const streak = computeStreak(sessionDates);
   const workoutsThisWeek = sessionDates.filter(
     (d) => d && new Date(d) >= new Date(weekAgo)

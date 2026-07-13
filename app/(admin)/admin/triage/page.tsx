@@ -47,6 +47,13 @@ export default async function TriagePage() {
     .returns<PendingReq[]>();
 
   // 2) AWOL: active members with no activity in 7+ days (or never)
+  type AwolRow = {
+    id: string;
+    full_name: string | null;
+    last_workout_date: string | null;
+    last_attendance_date: string | null;
+    created_at: string;
+  };
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const { data: awol } = await supabase
@@ -130,7 +137,7 @@ export default async function TriagePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pendingReqs!.map((r) => (
+                  {pendingReqs!.map((r: PendingReq) => (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium text-zinc-50">
                         {r.profiles?.full_name ?? t("common.unknown")}
@@ -177,7 +184,7 @@ export default async function TriagePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {awol!.map((p) => {
+                  {awol!.map((p: AwolRow) => {
                     const last =
                       (p.last_workout_date ?? p.last_attendance_date) as string | null;
                     return (
@@ -217,7 +224,7 @@ export default async function TriagePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {expiring!.map((s) => (
+                  {expiring!.map((s: ExpiringSub) => (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium text-zinc-50">
                         {s.profiles?.full_name ?? t("common.unknown")}
