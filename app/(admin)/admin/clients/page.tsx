@@ -41,7 +41,10 @@ export default async function ClientsPage() {
     : { data: [] };
 
   // Latest subscription per active user (for plan + expiry).
-  const activeIds = [...(activeRaw ?? []).map((p) => p.id), ...(staffRaw ?? []).map((p) => p.id)];
+  const activeIds = [
+    ...(activeRaw ?? []).map((p: { id: string }) => p.id),
+    ...(staffRaw ?? []).map((p: { id: string }) => p.id),
+  ];
   const { data: subs } = activeIds.length
     ? await supabase
         .from("subscriptions")
@@ -89,7 +92,7 @@ export default async function ClientsPage() {
           </TabsTrigger>
           {viewerRole === "admin" && (
             <TabsTrigger value="staff">
-              {t("clients.tab_staff", { n: (staffRaw ?? []).filter((p) => p.role !== "admin").length })}
+              {t("clients.tab_staff", { n: (staffRaw ?? []).filter((p: { role: string }) => p.role !== "admin").length })}
             </TabsTrigger>
           )}
         </TabsList>

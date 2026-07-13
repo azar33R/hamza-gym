@@ -90,10 +90,11 @@ export function LoginForm() {
     }
 
     // Sign in with the one-time credentials returned by the server action.
-    const { error } = await supabase.auth.signInWithPassword({
-      [res.identifierType!]: res.identifier!,
-      password: res.tempPassword!,
-    });
+    const creds =
+      res.identifierType === "phone"
+        ? { phone: res.identifier!, password: res.tempPassword! }
+        : { email: res.identifier!, password: res.tempPassword! };
+    const { error } = await supabase.auth.signInWithPassword(creds);
     if (error) {
       toast.error(error.message);
       setLoading(false);
