@@ -52,6 +52,7 @@ function ProductForm({
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [price, setPrice] = useState(String(product?.price_egp ?? ""));
+  const [cardioPrice, setCardioPrice] = useState(String(product?.cardio_price ?? ""));
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   const [uploadPending, setUploadPending] = useState(false);
   const [stock, setStock] = useState(String(product?.stock ?? ""));
@@ -78,6 +79,7 @@ function ProductForm({
         name,
         description,
         price_egp: Number(price),
+        cardio_price: Number(cardioPrice) || 0,
         image_url: imageUrl || null,
         stock: stockNum,
         is_active: active,
@@ -109,6 +111,12 @@ function ProductForm({
         <div>
           <Label htmlFor="p-stock">{t("admin.shop.stock")}</Label>
           <Input id="p-stock" type="number" min={0} value={stock} onChange={(e) => setStock(e.target.value)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 sm:col-span-1">
+          <Label htmlFor="p-cardio">{t("admin.shop.cardio_price")}</Label>
+          <Input id="p-cardio" type="number" min={0} value={cardioPrice} onChange={(e) => setCardioPrice(e.target.value)} />
         </div>
       </div>
       <div>

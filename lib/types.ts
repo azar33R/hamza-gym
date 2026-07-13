@@ -243,6 +243,7 @@ export type ShopProduct = {
   name: string;
   description: string | null;
   price_egp: number;
+  cardio_price: number;
   image_url: string | null;
   stock: number | null;
   is_active: boolean;
@@ -254,6 +255,8 @@ export type ShopOrder = {
   user_id: string;
   product_id: string;
   price_egp_snapshot: number;
+  cardio: boolean;
+  cardio_price_snapshot: number;
   status: ShopOrderStatus;
   sender_wallet: string | null;
   txn_id: string | null;

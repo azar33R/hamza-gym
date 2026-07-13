@@ -72,6 +72,7 @@ export async function createOrder(data: {
   contactName: string;
   contactPhone: string;
   contactNotes: string;
+  cardio: boolean;
 }): Promise<{ error: string | null }> {
   const userId = await currentUserId();
   if (!userId) return { error: "Not signed in." };
@@ -84,7 +85,7 @@ export async function createOrder(data: {
 
   const { data: product } = await supabase
     .from("shop_products")
-    .select("price_egp, is_active, stock")
+    .select("price_egp, cardio_price, is_active, stock")
     .eq("id", data.productId)
     .single<ShopProduct>();
   if (!product) return { error: "Product not found." };
@@ -93,10 +94,16 @@ export async function createOrder(data: {
     return { error: "This product is out of stock." };
   }
 
+  const cardio = !!data.cardio && product.cardio_price > 0;
+  const cardioAddon = cardio ? Number(product.cardio_price) : 0;
+  const total = Number(product.price_egp) + cardioAddon;
+
   const { error } = await supabase.from("shop_orders").insert({
     user_id: userId,
     product_id: data.productId,
-    price_egp_snapshot: product.price_egp,
+    price_egp_snapshot: total,
+    cardio,
+    cardio_price_snapshot: cardioAddon,
     status: "pending",
     contact_name: name,
     contact_phone: phone,
@@ -117,6 +124,7 @@ export async function upsertProduct(
     name: string;
     description: string;
     price_egp: number;
+    cardio_price: number;
     image_url: string | null;
     stock: number | null;
     is_active: boolean;
@@ -131,6 +139,7 @@ export async function upsertProduct(
     name: data.name.trim(),
     description: data.description.trim() || null,
     price_egp: data.price_egp,
+    cardio_price: data.cardio_price,
     image_url: data.image_url?.trim() || null,
     stock: data.stock,
     is_active: data.is_active,
