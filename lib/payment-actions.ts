@@ -24,6 +24,7 @@ export async function submitPaymentRequest(data: {
   planType: PlanType;
   senderWalletNumber: string;
   transactionId: string;
+  cardio: boolean;
 }): Promise<{ error: string | null }> {
   const ssr = await createSSRClient();
   const {
@@ -39,12 +40,23 @@ export async function submitPaymentRequest(data: {
 
   const supabase = serviceClient();
 
+  // Look up the plan's cardio add-on price (used only if the member opted in).
+  const { data: planRow } = await supabase
+    .from("plans")
+    .select("cardio_price")
+    .eq("plan_type", data.planType)
+    .maybeSingle<{ cardio_price: number }>();
+  const planCardioPrice = planRow?.cardio_price ?? 0;
+
   // 1) Create the pending payment request.
+  const cardioAddon = data.cardio ? Number(planCardioPrice) : 0;
   const { error: reqError } = await supabase.from("payment_requests").insert({
     user_id: user.id,
     plan_type: data.planType,
     sender_wallet_number: wallet,
     transaction_id: txn,
+    cardio: data.cardio && cardioAddon > 0,
+    cardio_price_snapshot: cardioAddon,
     status: "pending",
   });
   if (reqError) return { error: reqError.message };

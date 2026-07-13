@@ -32,10 +32,16 @@ export function VodafonePaymentModal({
   const [open, setOpen] = useState(false);
   const [wallet, setWallet] = useState("");
   const [txnId, setTxnId] = useState("");
+  const [cardio, setCardio] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const hasCardio = !!plan && plan.cardio_price > 0;
+  const total =
+    (plan?.price_egp ?? 0) + (cardio && hasCardio ? (plan?.cardio_price ?? 0) : 0);
 
   useEffect(() => {
     setOpen(plan !== null);
+    setCardio(false);
   }, [plan]);
 
   function handleClose(open: boolean) {
@@ -67,6 +73,7 @@ export function VodafonePaymentModal({
       planType: plan.plan_type,
       senderWalletNumber: wallet,
       transactionId: txnId.trim(),
+      cardio,
     });
 
     if (res.error) {
@@ -106,6 +113,21 @@ export function VodafonePaymentModal({
               <span>{walletNumber}</span>
               <Copy className="h-4 w-4" />
             </button>
+            {hasCardio && (
+              <label className="mt-3 flex cursor-pointer items-center gap-3 border-t border-border pt-3 text-zinc-200">
+                <input
+                  type="checkbox"
+                  checked={cardio}
+                  onChange={(e) => setCardio(e.target.checked)}
+                  className="h-4 w-4 accent-lime-500"
+                />
+                <span className="flex-1">{t("billing.add_cardio", { price: plan?.cardio_price ?? 0 })}</span>
+              </label>
+            )}
+            <p className="mt-3 flex items-center justify-between border-t border-border pt-3 font-semibold text-zinc-50">
+              <span>{t("billing.total")}</span>
+              <span>{total} EGP</span>
+            </p>
           </div>
 
           <div className="space-y-2">

@@ -73,9 +73,7 @@ function OrderDialog({ orders }: { orders: (ShopOrder & { product_name: string |
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-zinc-50">{o.product_name ?? t("shop.product")}</p>
-                    <p className="text-xs text-zinc-500">
-                      {o.price_egp_snapshot} EGP{o.cardio ? ` · ${t("shop.cardio")}` : ""}
-                    </p>
+                    <p className="text-xs text-zinc-500">{o.price_egp_snapshot} EGP</p>
                     <p className="mt-1 text-[10px] text-zinc-600">
                       {new Date(o.created_at).toLocaleDateString()}
                     </p>
@@ -103,18 +101,12 @@ function BuyDialog({
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [contactNotes, setContactNotes] = useState("");
-  const [cardio, setCardio] = useState(false);
   const [pending, startTransition] = useTransition();
-
-  const hasCardio = product.cardio_price > 0;
-  const total =
-    product.price_egp + (cardio && hasCardio ? product.cardio_price : 0);
 
   function reset() {
     setContactName("");
     setContactPhone("");
     setContactNotes("");
-    setCardio(false);
   }
 
   function handleBuy() {
@@ -128,7 +120,6 @@ function BuyDialog({
         contactName: contactName.trim(),
         contactPhone: contactPhone.trim(),
         contactNotes: contactNotes.trim(),
-        cardio,
       });
       if (res.error) {
         toast.error(res.error);
@@ -155,7 +146,7 @@ function BuyDialog({
             {product.name}
           </DialogTitle>
           <DialogDescription>
-            {total} EGP · {t("shop.contact_info")}
+            {product.price_egp} EGP · {t("shop.contact_info")}
           </DialogDescription>
         </DialogHeader>
 
@@ -195,19 +186,6 @@ function BuyDialog({
               rows={2}
             />
           </div>
-
-          {hasCardio && (
-            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-zinc-950/40 p-3 text-sm text-zinc-200">
-              <input
-                type="checkbox"
-                id={`bd-cardio-${product.id}`}
-                checked={cardio}
-                onChange={(e) => setCardio(e.target.checked)}
-                className="h-4 w-4 accent-lime-500"
-              />
-              <span className="flex-1">{t("shop.add_cardio", { price: product.cardio_price })}</span>
-            </label>
-          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
@@ -288,11 +266,6 @@ export function ProShop({
                 {product.description && (
                   <p className="mb-3 line-clamp-2 text-sm text-zinc-400">
                     {product.description}
-                  </p>
-                )}
-                {product.cardio_price > 0 && (
-                  <p className="mb-3 text-xs text-zinc-500">
-                    {t("shop.cardio_option", { price: product.cardio_price })}
                   </p>
                 )}
 

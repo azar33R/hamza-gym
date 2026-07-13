@@ -36,6 +36,11 @@ export function BillingGrid({
               <CardTitle className="text-zinc-50">{plan.label}</CardTitle>
               <div className="mt-2">
                 <Badge variant="muted">{plan.price_egp} EGP</Badge>
+                {plan.cardio_price > 0 && (
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {t("billing.cardio_option", { price: plan.cardio_price })}
+                  </p>
+                )}
               </div>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col">

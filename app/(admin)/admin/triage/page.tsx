@@ -35,12 +35,13 @@ export default async function TriagePage() {
     user_id: string;
     plan_type: string;
     transaction_id: string;
+    cardio: boolean;
     created_at: string;
     profiles: { full_name: string | null } | null;
   };
   const { data: pendingReqs } = await supabase
     .from("payment_requests")
-    .select("id, user_id, plan_type, transaction_id, created_at, profiles(full_name)")
+    .select("id, user_id, plan_type, transaction_id, cardio, created_at, profiles(full_name)")
     .eq("status", "pending")
     .order("created_at", { ascending: false })
     .returns<PendingReq[]>();
@@ -134,9 +135,16 @@ export default async function TriagePage() {
                       <TableCell className="font-medium text-zinc-50">
                         {r.profiles?.full_name ?? t("common.unknown")}
                       </TableCell>
-                      <TableCell className="capitalize text-zinc-300">
-                        {r.plan_type.replace("-", " ")}
-                      </TableCell>
+                       <TableCell className="capitalize text-zinc-300">
+                         <span className="flex items-center gap-2">
+                           {r.plan_type.replace("-", " ")}
+                           {r.cardio && (
+                             <Badge className="bg-primary/15 text-primary">
+                               {t("billing.cardio")}
+                             </Badge>
+                           )}
+                         </span>
+                       </TableCell>
                       <TableCell className="hidden font-mono text-xs text-zinc-400 sm:table-cell">
                         {r.transaction_id}
                       </TableCell>

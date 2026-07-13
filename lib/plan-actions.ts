@@ -27,6 +27,7 @@ export async function upsertPlan(
     plan_type: string;
     label: string;
     price_egp: number;
+    cardio_price: number;
     duration_months: number;
     features: string[];
     is_active: boolean;
@@ -46,6 +47,7 @@ export async function upsertPlan(
     plan_type: data.plan_type as PlanType,
     label: data.label.trim(),
     price_egp: data.price_egp,
+    cardio_price: data.cardio_price,
     duration_months: data.duration_months,
     features: data.features,
     is_active: data.is_active,

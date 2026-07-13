@@ -49,6 +49,7 @@ export function PlanEditor({
   const [planType, setPlanType] = useState<PlanType>(plan?.plan_type ?? "1-month");
   const [label, setLabel] = useState(plan?.label ?? "");
   const [price, setPrice] = useState(String(plan?.price_egp ?? ""));
+  const [cardioPrice, setCardioPrice] = useState(String(plan?.cardio_price ?? ""));
   const [duration, setDuration] = useState(String(plan?.duration_months ?? "1"));
   const [features, setFeatures] = useState<string[]>(plan?.features ?? [""]);
   const [isActive, setIsActive] = useState(plan?.is_active ?? true);
@@ -71,6 +72,7 @@ export function PlanEditor({
         plan_type: planType,
         label,
         price_egp: Number(price) || 0,
+        cardio_price: Number(cardioPrice) || 0,
         duration_months: Number(duration) || 0,
         features: features.filter((f) => f.trim()),
         is_active: isActive,
@@ -131,6 +133,16 @@ export function PlanEditor({
                 required
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-cardio">{t("admin.plans.cardio_price")}</Label>
+              <Input
+                id="p-cardio"
+                type="number"
+                min={0}
+                value={cardioPrice}
+                onChange={(e) => setCardioPrice(e.target.value)}
               />
             </div>
             <div className="space-y-2">
