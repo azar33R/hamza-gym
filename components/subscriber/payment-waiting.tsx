@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { Clock, ArrowLeft } from "lucide-react";
+import { useI18n } from "@/lib/i18n/client";
 
 export function PaymentWaiting({ fullName }: { fullName: string | null }) {
+  const { t } = useI18n();
   const firstName = fullName?.split(" ")[0];
 
   return (
@@ -12,17 +16,15 @@ export function PaymentWaiting({ fullName }: { fullName: string | null }) {
         </div>
 
         <h1 className="text-2xl font-bold tracking-tight text-zinc-50">
-          {firstName ? `Thanks, ${firstName}!` : "Thanks!"}
+          {firstName ? t("waiting.thanks_name", { name: firstName }) : t("waiting.thanks")}
         </h1>
 
         <p className="mx-auto mt-3 max-w-sm text-zinc-400">
-          Your payment is being verified by the coach. You&apos;ll get access
-          shortly!
+          {t("waiting.body")}
         </p>
 
         <div className="mt-6 rounded-xl border border-border bg-card p-4 text-sm text-zinc-400">
-          This usually takes a few hours. Hang tight — we&apos;ll unlock your
-          dashboard as soon as it&apos;s approved.
+          {t("waiting.detail")}
         </div>
 
         <Link
@@ -30,7 +32,7 @@ export function PaymentWaiting({ fullName }: { fullName: string | null }) {
           className="mt-8 inline-flex items-center gap-2 text-sm text-zinc-400 transition-colors hover:text-zinc-50"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to options
+          {t("waiting.back")}
         </Link>
       </div>
     </div>

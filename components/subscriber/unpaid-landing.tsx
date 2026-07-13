@@ -53,10 +53,10 @@ export function UnpaidLanding({ fullName }: { fullName: string | null }) {
               </span>
               <div className="flex-1">
                 <h2 className="text-base font-semibold text-zinc-50">
-                  {t("billing.select_plan")}
+                  {t("unpaid.view_plans")}
                 </h2>
                 <p className="text-sm text-zinc-400">
-                  {t("billing.pay_instruction")}
+                  {t("unpaid.view_plans_desc")}
                 </p>
               </div>
             </div>

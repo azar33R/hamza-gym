@@ -353,7 +353,7 @@
 
   "billing.chat_coach": "Chat with Coach",
   "billing.confirm": "Submit Payment Request",
-  "billing.contact_coach": "Message {coach} to activate manually",
+  "billing.contact_coach": "Message {name} to activate manually",
   "billing.desc": "Activate your membership to unlock your workouts.",
   "redeem.title": "Have a code?",
   "redeem.desc": "Enter your subscription code to activate it.",
@@ -953,7 +953,7 @@
   "triage.verify_lifts": "Verify Lifts",
 
   "unpaid.chat_coach": "Chat with Coach",
-  "unpaid.chat_coach_desc": "Message {coach} to activate manually",
+  "unpaid.chat_coach_desc": "Message {name} to activate manually",
   "unpaid.gym_location": "Gym Location",
   "unpaid.gym_location_desc": "Find us and our opening hours",
   "unpaid.subtitle": "Activate your membership to unlock your workouts.",

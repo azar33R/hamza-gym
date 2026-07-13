@@ -353,7 +353,7 @@
 
   "billing.chat_coach": "كلم الكابتن",
   "billing.confirm": "إرسال طلب التفعيل",
-  "billing.contact_coach": "ابعت رسالة لـ {coach} عشان يفعل الاشتراك مانيوال",
+  "billing.contact_coach": "ابعت رسالة لـ {name} عشان يفعل الاشتراك مانيوال",
   "billing.desc": "فعل اشتراكك عشان تفتح التمارين.",
   "redeem.title": "عندك كود؟",
   "redeem.desc": "ادخل كود الاشتراك عشان تفعّله.",
@@ -955,7 +955,7 @@
   "triage.verify_lifts": "مراجعة الرفعات",
 
   "unpaid.chat_coach": "كلم الكابتن",
-  "unpaid.chat_coach_desc": "ابعت رسالة لـ {coach} عشان يفعل الاشتراك مانيوال",
+  "unpaid.chat_coach_desc": "ابعت رسالة لـ {name} عشان يفعل الاشتراك مانيوال",
   "unpaid.gym_location": "مكان الجيم",
   "unpaid.gym_location_desc": "اعرف مكاننا ومواعيد العمل",
   "unpaid.subtitle": "فعل اشتراكك عشان تفتح التمارين.",
