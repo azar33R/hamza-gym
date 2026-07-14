@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/lib/supabase/server";
 import { getMyWeeklySchedule } from "@/lib/weekly-schedule-actions";
 import { getWorkoutPresets } from "@/lib/workout-preset-actions";
+import { getUnlockedPresetIds } from "@/lib/preset-access-actions";
 import type { WorkoutPreset } from "@/lib/constants";
 import {
   pointsLeaderboard,
@@ -314,11 +315,11 @@ export async function getWorkoutData(): Promise<{
   const weeklySchedulePromise = getMyWeeklySchedule();
   const presetsPromise = getWorkoutPresets();
 
-  const [profileRes, scheduledRes, coachRes, myRes, coachProfileRes, machineRes] =
+  const [profileRes, scheduledRes, coachRes, myRes, coachProfileRes, machineRes, assignedRes, schedCoachRes] =
     await Promise.all([
       supabase
         .from("profiles")
-        .select("last_attendance_date")
+        .select("last_attendance_date, role")
         .eq("id", userId)
         .single(),
       supabase
@@ -344,14 +345,39 @@ export async function getWorkoutData(): Promise<{
         .in("role", ["admin", "staff"])
         .order("created_at", { ascending: true }),
       supabase.from("machine_library").select("*").order("name", { ascending: true }),
+      supabase.from("scheduled_workouts").select("template_id").eq("user_id", userId),
+      supabase
+        .from("user_weekly_schedule")
+        .select("source_id")
+        .eq("user_id", userId)
+        .eq("source_type", "coach"),
     ]);
 
   const checkedInToday = isToday(profileRes.data?.last_attendance_date);
 
+  const isStaffOrAdmin =
+    profileRes.data?.role === "admin" || profileRes.data?.role === "staff";
+
+  // A subscriber only sees coach templates assigned to them (via dated
+  // assignments or a pinned coach plan). Staff/admin see their full library.
+  const assignedCoachIds = new Set<string>([
+    ...((assignedRes.data ?? []) as { template_id: string }[]).map((r) => r.template_id),
+    ...((schedCoachRes.data ?? []) as { source_id: string }[]).map((r) => r.source_id),
+  ]);
+
+  const allCoach = (coachRes.data ?? []) as {
+    id: string;
+    name: string;
+    description: string | null;
+    exercises: Exercise[];
+  }[];
+  const coachList = isStaffOrAdmin
+    ? allCoach
+    : allCoach.filter((t) => assignedCoachIds.has(t.id));
+
   let coachTemplate: WorkoutPageData["coachTemplate"] = null;
   if (scheduledRes.data?.template_id) {
-    const allCoachTemplates = (coachRes.data ?? []) as { id: string; name: string; description: string | null; exercises: Exercise[] }[];
-    const t = allCoachTemplates.find((t) => t.id === scheduledRes.data!.template_id);
+    const t = coachList.find((t) => t.id === scheduledRes.data!.template_id);
     if (t) {
       coachTemplate = {
         id: t.id,
@@ -362,12 +388,7 @@ export async function getWorkoutData(): Promise<{
     }
   }
 
-  const coachTemplates = ((coachRes.data ?? []) as {
-    id: string;
-    name: string;
-    description: string | null;
-    exercises: Exercise[];
-  }[]).map((t) => ({
+  const coachTemplates = coachList.map((t) => ({
     id: t.id,
     name: t.name,
     description: t.description,
@@ -375,7 +396,12 @@ export async function getWorkoutData(): Promise<{
   }));
 
   const { days: weeklyDays } = await weeklySchedulePromise;
-  const presets = await presetsPromise;
+  const presetsAll = await presetsPromise;
+  // Subscribers only see presets the coach has unlocked for them.
+  const unlockedIds = isStaffOrAdmin ? null : await getUnlockedPresetIds(userId);
+  const presets = isStaffOrAdmin
+    ? presetsAll
+    : presetsAll.filter((p) => unlockedIds!.includes(p.id));
 
     return {
       error: null,
