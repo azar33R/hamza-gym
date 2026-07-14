@@ -1,8 +1,9 @@
 import { getT } from "@/lib/i18n/server";
-import { requireStaffOrAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin";
 import { getRevenueAnalytics } from "@/lib/revenue-actions";
 import { MetricCard } from "@/components/admin/metric-card";
 import { DayPassDialog } from "@/components/admin/day-pass-dialog";
+import { ManualRevenueList } from "@/components/admin/manual-revenue-list";
 import {
   DollarSign,
   TrendingUp,
@@ -25,7 +26,7 @@ function maxOf(nums: number[]): number {
 
 export default async function RevenueAnalysisPage() {
   const t = await getT();
-  await requireStaffOrAdmin();
+  await requireAdmin();
   const data = await getRevenueAnalytics();
 
   const dailyMax = maxOf(data.daily.map((d) => d.revenue));
@@ -167,6 +168,14 @@ export default async function RevenueAnalysisPage() {
           </div>
         </section>
       </div>
+
+      {/* Manual entries (deletable) */}
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <h2 className="mb-4 text-sm font-medium text-zinc-400">
+          {t("admin.revenue.manual_entries")}
+        </h2>
+        <ManualRevenueList entries={data.manualEntries} />
+      </section>
 
       {/* Recent revenue */}
       <section className="rounded-2xl border border-border bg-card p-5">

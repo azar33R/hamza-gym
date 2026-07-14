@@ -25,7 +25,8 @@ import {
   POINT_REWARDS,
   bannerGradient,
 } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, daysLeftUntil } from "@/lib/utils";
+import { ensurePlanEndingNotification } from "@/lib/notification-actions";
 
 function isToday(dateStr?: string | null): boolean {
   if (!dateStr) return false;
@@ -238,15 +239,12 @@ export default async function DashboardPage() {
   const planLabel = subscription?.plan_type
     ? subscription.plan_type.replace("-", " ")
     : null;
-  const daysLeft = subscription?.end_date
-    ? Math.max(
-        0,
-        Math.ceil(
-          (new Date(subscription.end_date).getTime() - Date.now()) /
-            (1000 * 60 * 60 * 24)
-        )
-      )
-    : null;
+  const daysLeft = daysLeftUntil(subscription?.end_date);
+
+  // Nudge the member when their plan is about to expire (once per window).
+  if (daysLeft !== null && user) {
+    await ensurePlanEndingNotification(user.id, daysLeft);
+  }
 
   const lastWorkout = profile?.last_workout_date
     ? new Date(profile.last_workout_date)

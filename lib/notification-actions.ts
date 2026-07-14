@@ -108,3 +108,38 @@ export async function markNotificationRead(
   return { error: null };
 }
 
+// Proactively notify a member when their plan is about to expire. Fire once per
+// ~3-day window so we don't spam them daily. Safe to call on every dashboard
+// load — the dedupe check makes it idempotent.
+export async function ensurePlanEndingNotification(
+  userId: string,
+  daysLeft: number
+): Promise<void> {
+  if (!userId || daysLeft <= 0 || daysLeft > 3) return;
+
+  const supabase = serviceClient();
+
+  // Skip if we already warned this member in the last 3 days.
+  const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
+  const { data: existing } = await supabase
+    .from("notifications")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("type", "plan_ending")
+    .gte("created_at", since)
+    .limit(1);
+
+  if (existing && existing.length > 0) return;
+
+  await supabase.from("notifications").insert({
+    user_id: userId,
+    type: "plan_ending",
+    title: "اشتراكك أوشك على الانتهاء",
+    body: `تبقّى ${daysLeft} يوم على انتهاء اشتراكك. جدّد الآن لتجنّب توقّف الوصول.`,
+    is_read: false,
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/notifications");
+}
+

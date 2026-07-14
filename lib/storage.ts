@@ -118,3 +118,26 @@ export async function uploadShopProductPhoto(file: File): Promise<UploadResult> 
   const { data } = supabase.storage.from("shop-products").getPublicUrl(path);
   return { url: data.publicUrl, error: null };
 }
+
+// Upload a chat photo. Any signed-in user can write to their own folder
+// (enforced by storage RLS). Compresses to 1024×1024 max, JPEG @ 80% quality.
+export async function uploadChatPhoto(file: File): Promise<UploadResult> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { url: null, error: "Not signed in." };
+
+  const compressed = await compressImage(file, 1024, 0.8);
+
+  const path = `${user.id}/${crypto.randomUUID()}.${ext(compressed.name)}`;
+  const { error } = await supabase.storage.from("chat-photos").upload(path, compressed, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: compressed.type,
+  });
+  if (error) return { url: null, error: error.message };
+
+  const { data } = supabase.storage.from("chat-photos").getPublicUrl(path);
+  return { url: data.publicUrl, error: null };
+}

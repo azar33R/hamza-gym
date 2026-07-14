@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Ban, Loader2, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { Trash2, Ban, Loader2, ShieldCheck, Eye, EyeOff, MessageCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,7 @@ import type { Plan, AttendanceLog } from "@/lib/types";
 import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
 import { getUserAuthInfo } from "@/lib/admin-user-actions";
+import { normalizeEGPhone } from "@/lib/phone";
 
 type UserData = {
   id: string;
@@ -183,11 +184,27 @@ export function UserSettingsDialog({
                       </button>
                     </dt>
                     <dd className="mt-1 font-medium text-zinc-50">
-                      {phoneRevealed ? contact.phone ?? "—" : "•••••••"}
-                    </dd>
-                  </div>
-                </>
-              )}
+                       {phoneRevealed ? contact.phone ?? "—" : "•••••••"}
+                     </dd>
+                   </div>
+                 </>
+               )}
+
+               {isAdminViewer && contact?.phone && (() => {
+                 const wa = normalizeEGPhone(contact.phone!);
+                 if (!wa) return null;
+                 return (
+                   <a
+                     href={`https://wa.me/${wa.replace("+", "")}`}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                   >
+                     <MessageCircle className="h-4 w-4" />
+                     {t("admin.user_settings.whatsapp")}
+                   </a>
+                 );
+               })()}
             </dl>
 
             <div className="mt-5">

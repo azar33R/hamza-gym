@@ -57,6 +57,7 @@ export default async function SettingsPage() {
           {t("admin_settings.management")}
         </h2>
         <div className="grid gap-2">
+          {isAdmin && (
           <Button asChild variant="outline" className="h-auto justify-start gap-3 px-4 py-3">
             <Link href="/admin/settings/revenue">
               <TrendingUp className="h-4 w-4 text-primary" />
@@ -66,6 +67,7 @@ export default async function SettingsPage() {
               </div>
             </Link>
           </Button>
+          )}
           <Button asChild variant="outline" className="h-auto justify-start gap-3 px-4 py-3">
             <Link href="/admin/machines">
               <Cpu className="h-4 w-4 text-primary" />

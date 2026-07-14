@@ -82,6 +82,7 @@ export type RevenueAnalytics = {
   byPlan: RevenueByPlan[];
   dayPasses: { date: string; quantity: number; amount: number }[];
   recent: RecentRevenue[];
+  manualEntries: ManualRevenue[];
 };
 
 function ymd(d: Date): string {
@@ -231,5 +232,20 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
     byPlan: Array.from(byPlanMap.values()).sort((a, b) => b.revenue - a.revenue),
     dayPasses,
     recent: recent.slice(0, 25),
+    manualEntries: manualRows.slice(0, 50),
   };
+}
+
+export async function deleteManualRevenue(
+  id: string
+): Promise<{ error: string | null }> {
+  const { profile } = await requireAdmin();
+  if (!profile) return { error: "Not authorized." };
+
+  const supabase = await createSSRClient();
+  const { error } = await supabase.from("manual_revenue").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/settings/revenue");
+  return { error: null };
 }

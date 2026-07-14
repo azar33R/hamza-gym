@@ -137,7 +137,7 @@ export type UserWorkoutTemplate = {
   created_at: string;
 };
 
-export type NotificationType = "nudge" | "broadcast" | "payment" | "dm";
+export type NotificationType = "nudge" | "broadcast" | "payment" | "dm" | "plan_ending";
 
 export type Notification = {
   id: string;
@@ -323,6 +323,7 @@ export type ChatMessage = {
   sender_id: string;
   recipient_id: string;
   body: string;
+  image_url: string | null;
   read_at: string | null;
   created_at: string;
 };

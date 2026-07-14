@@ -61,13 +61,15 @@ export async function unreadChatCount(): Promise<{
 // refresh immediately for the sender.
 export async function sendMessage(
   recipientId: string,
-  body: string
+  body: string,
+  imageUrl?: string | null
 ): Promise<{ error: string | null }> {
   const senderId = await currentUserId();
   if (!senderId) return { error: "Not signed in." };
 
   const trimmed = body.trim();
-  if (!trimmed) return { error: "Message cannot be empty." };
+  // A message must have text OR an image.
+  if (!trimmed && !imageUrl) return { error: "Message cannot be empty." };
   if (trimmed.length > 1000) return { error: "Message is too long." };
 
   const supabase = serviceClient();
@@ -76,6 +78,7 @@ export async function sendMessage(
     sender_id: senderId,
     recipient_id: recipientId,
     body: trimmed,
+    image_url: imageUrl ?? null,
   });
   if (error) return { error: error.message };
 
@@ -90,7 +93,7 @@ export async function sendMessage(
   try {
     await sendPushToUser(
       recipientId,
-      { title: senderName, body: trimmed },
+      { title: senderName, body: trimmed || "📷 Photo" },
       "dm",
       null,
       "/chat"
