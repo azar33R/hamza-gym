@@ -191,26 +191,6 @@ export async function assignMyDay(
 
   const supabase = serviceClient();
 
-  // Subscribers may only pin presets the coach has unlocked for them.
-  if (sourceType === "preset") {
-    const { data: me } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .single();
-    if (me?.role === "subscriber") {
-      const { data: access } = await supabase
-        .from("user_preset_access")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("preset_id", sourceId)
-        .limit(1);
-      if (!access || access.length === 0) {
-        return { error: "This preset is locked. Ask your coach to unlock it." };
-      }
-    }
-  }
-
   const { error } = await supabase
     .from("user_weekly_schedule")
     .upsert(

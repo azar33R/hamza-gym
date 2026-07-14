@@ -4,7 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/lib/supabase/server";
 import { getMyWeeklySchedule } from "@/lib/weekly-schedule-actions";
 import { getWorkoutPresets } from "@/lib/workout-preset-actions";
-import { getUnlockedPresetIds } from "@/lib/preset-access-actions";
 import type { WorkoutPreset } from "@/lib/constants";
 import {
   pointsLeaderboard,
@@ -396,12 +395,7 @@ export async function getWorkoutData(): Promise<{
   }));
 
   const { days: weeklyDays } = await weeklySchedulePromise;
-  const presetsAll = await presetsPromise;
-  // Subscribers only see presets the coach has unlocked for them.
-  const unlockedIds = isStaffOrAdmin ? null : await getUnlockedPresetIds(userId);
-  const presets = isStaffOrAdmin
-    ? presetsAll
-    : presetsAll.filter((p) => unlockedIds!.includes(p.id));
+  const presets = await presetsPromise;
 
     return {
       error: null,

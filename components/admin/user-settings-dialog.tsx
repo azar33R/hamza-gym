@@ -51,12 +51,8 @@ import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
 import { getUserAuthInfo } from "@/lib/admin-user-actions";
 import { normalizeEGPhone } from "@/lib/phone";
-import {
-  listPresetAccess,
-  setPresetUnlocked,
-  type PresetAccessRow,
-} from "@/lib/preset-access-actions";
-import { Lock, Unlock } from "lucide-react";
+import { removeWorkout } from "@/lib/schedule-actions";
+import { Lock } from "lucide-react";
 
 type UserData = {
   id: string;
@@ -101,24 +97,16 @@ export function UserSettingsDialog({
   }, [user.role]);
 
   const isAdminViewer = viewerRole === "admin";
-  const canManagePresets = viewerRole === "admin" || viewerRole === "staff";
   const [scheduled, setScheduled] = useState<
     { id: string; scheduled_date: string; template_id: string }[]
   >([]);
   const [contact, setContact] = useState<{ phone: string | null; email: string | null } | null>(null);
   const [phoneRevealed, setPhoneRevealed] = useState(false);
-  const [presetAccess, setPresetAccess] = useState<PresetAccessRow[] | null>(null);
-  const [togglingPreset, setTogglingPreset] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     getUserAuthInfo(user.id).then(setContact);
   }, [open, user.id]);
-
-  useEffect(() => {
-    if (!open || !canManagePresets) return;
-    listPresetAccess(user.id).then((r) => setPresetAccess(r.presets));
-  }, [open, canManagePresets, user.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -148,6 +136,23 @@ export function UserSettingsDialog({
     });
   }
 
+  const tmplName = (id: string) =>
+    templates.find((t) => t.id === id)?.name ??
+    t("admin.user_settings.unknown_template");
+
+  function handleRemoveScheduled(id: string) {
+    startTransition(async () => {
+      const res = await removeWorkout(id);
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        setScheduled((prev) => prev.filter((p) => p.id !== id));
+        toast.success(t("admin.user_settings.removed_from_schedule"));
+        router.refresh();
+      }
+    });
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -165,7 +170,6 @@ export function UserSettingsDialog({
             <TabsTrigger value="overview">{t("admin.user_settings.tabs.overview")}</TabsTrigger>
             <TabsTrigger value="payment">{t("admin.user_settings.tabs.payment")}</TabsTrigger>
             <TabsTrigger value="schedule">{t("admin.user_settings.tabs.schedule")}</TabsTrigger>
-            {canManagePresets && <TabsTrigger value="presets">{t("admin.user_settings.tabs.presets")}</TabsTrigger>}
             {isAdminViewer && <TabsTrigger value="role">{t("admin.user_settings.tabs.role")}</TabsTrigger>}
           </TabsList>
 
@@ -369,75 +373,49 @@ export function UserSettingsDialog({
               templates={templates}
               existing={scheduled}
             />
-          </TabsContent>
 
-          {/* ---- Presets (coach/staff can unlock for this member) ---- */}
-          {canManagePresets && (
-            <TabsContent value="presets">
-              <div className="space-y-2">
-                <p className="text-xs text-zinc-400">
-                  {t("admin.user_settings.presets_desc")}
+            {/* Coach templates assigned to this member — "unlocked" simply by
+                being on their schedule. The lock button removes it from the day. */}
+            <div className="mt-5">
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
+                {t("admin.user_settings.scheduled_templates")}
+              </h3>
+              {scheduled.length === 0 ? (
+                <p className="text-sm text-zinc-500">
+                  {t("admin.user_settings.no_scheduled")}
                 </p>
-                {!presetAccess ? (
-                  <p className="text-sm text-zinc-500">{t("common.loading")}</p>
-                ) : presetAccess.length === 0 ? (
-                  <p className="text-sm text-zinc-500">{t("admin.user_settings.no_presets")}</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {presetAccess.map((p) => (
-                      <div
-                        key={p.presetId}
-                        className="flex items-center justify-between rounded-lg border border-border bg-zinc-950/40 px-3 py-2"
-                      >
-                        <span className="truncate text-sm text-zinc-100">{p.name}</span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={p.unlocked ? "secondary" : "outline"}
-                          className="gap-1.5"
-                          disabled={togglingPreset === p.presetId}
-                          onClick={() => {
-                            setTogglingPreset(p.presetId);
-                            startTransition(async () => {
-                              const res = await setPresetUnlocked(
-                                user.id,
-                                p.presetId,
-                                !p.unlocked
-                              );
-                              if (res.error) {
-                                toast.error(res.error);
-                              } else {
-                                toast.success(
-                                  p.unlocked
-                                    ? t("admin.user_settings.preset_locked")
-                                    : t("admin.user_settings.preset_unlocked")
-                                );
-                                const r = await listPresetAccess(user.id);
-                                setPresetAccess(r.presets);
-                              }
-                              setTogglingPreset(null);
-                            });
-                          }}
-                        >
-                          {p.unlocked ? (
-                            <>
-                              <Unlock className="h-3.5 w-3.5" />
-                              {t("admin.user_settings.unlocked")}
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="h-3.5 w-3.5" />
-                              {t("admin.user_settings.locked")}
-                            </>
-                          )}
-                        </Button>
+              ) : (
+                <div className="space-y-1.5">
+                  {scheduled.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex items-center justify-between rounded-lg border border-border bg-zinc-950/40 px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-zinc-100">
+                          {tmplName(s.template_id)}
+                        </p>
+                        <p className="text-[11px] text-zinc-500">
+                          {s.scheduled_date} · {t("admin.user_settings.unlocked_for_user")}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        disabled={pending}
+                        onClick={() => handleRemoveScheduled(s.id)}
+                      >
+                        <Lock className="h-3.5 w-3.5" />
+                        {t("admin.user_settings.lock")}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
 
           {/* ---- Role (admin viewers only) ---- */}
           {isAdminViewer && (
