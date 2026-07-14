@@ -3,10 +3,17 @@
 import { useState, useTransition } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { toast } from "sonner";
-import { Plus, Copy, Check, UserPlus } from "lucide-react";
+import { Copy, Check, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -16,14 +23,20 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createMember } from "@/lib/member-actions";
+import type { Plan } from "@/lib/types";
 
-export function AddMemberDialog() {
+type Props = {
+  plans: Plan[];
+};
+
+export function AddMemberDialog({ plans }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [gender, setGender] = useState("");
+  const [plan, setPlan] = useState("");
   const [age, setAge] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
@@ -36,6 +49,7 @@ export function AddMemberDialog() {
     setPhone("");
     setEmail("");
     setGender("");
+    setPlan("");
     setAge("");
     setHeight("");
     setWeight("");
@@ -45,12 +59,17 @@ export function AddMemberDialog() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!plan) {
+      toast.error(t("admin.members.plan_required"));
+      return;
+    }
     startTransition(async () => {
       const res = await createMember({
         fullName,
         phone: phone.trim() || null,
         email: email.trim() || null,
-        gender: gender.trim() || null,
+        gender: gender || null,
+        planType: (plan as any) || null,
         age: age ? Number(age) : null,
         heightCm: height ? Number(height) : null,
         weightKg: weight ? Number(weight) : null,
@@ -131,44 +150,66 @@ export function AddMemberDialog() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="m-phone">{t("admin.members.phone")}</Label>
-                <div className="flex items-center gap-2">
-                  <span className="flex h-10 items-center rounded-md border border-input bg-zinc-900 px-3 text-sm font-medium text-zinc-300">
-                    +20
-                  </span>
-                  <Input
-                    id="m-phone"
-                    type="tel"
-                    inputMode="numeric"
-                    placeholder="01006857031"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="m-email">{t("admin.members.email")}</Label>
+
+            <div className="space-y-2">
+              <Label htmlFor="m-phone">{t("admin.members.phone")}</Label>
+              <div className="flex items-center gap-2">
+                <span className="flex h-10 items-center rounded-md border border-input bg-zinc-900 px-3 text-sm font-medium text-zinc-300">
+                  +20
+                </span>
                 <Input
-                  id="m-email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="m-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="01006857031"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="flex-1"
                 />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="m-email">{t("admin.members.email")}</Label>
+              <Input
+                id="m-email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="m-gender">{t("admin.members.gender")}</Label>
+              <Select value={gender} onValueChange={setGender}>
+                <SelectTrigger id="m-gender">
+                  <SelectValue placeholder={t("admin.members.select_gender")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">{t("admin.members.gender_male")}</SelectItem>
+                  <SelectItem value="female">{t("admin.members.gender_female")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("admin.members.plan")}</Label>
+              <Select value={plan} onValueChange={setPlan}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("admin.members.select_plan")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans.map((p) => (
+                    <SelectItem key={p.id} value={p.plan_type}>
+                      {p.label} — {p.price_egp} EGP
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="m-gender">{t("admin.members.gender")}</Label>
-                <Input
-                  id="m-gender"
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="m-age">{t("admin.members.age")}</Label>
                 <Input
@@ -189,17 +230,18 @@ export function AddMemberDialog() {
                   onChange={(e) => setHeight(e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="m-weight">{t("admin.members.weight")}</Label>
+                <Input
+                  id="m-weight"
+                  type="number"
+                  min={0}
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="m-weight">{t("admin.members.weight")}</Label>
-              <Input
-                id="m-weight"
-                type="number"
-                min={0}
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-              />
-            </div>
+
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? t("admin.members.creating") : t("admin.members.create")}
             </Button>

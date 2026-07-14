@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin";
 import { normalizeEGPhone } from "@/lib/phone";
+import { sendPushToUser } from "@/lib/push";
+import type { PlanType } from "@/lib/constants";
 
 function serviceClient() {
   return createClient(
@@ -45,6 +47,7 @@ export type CreateMemberInput = {
   age?: number | null;
   heightCm?: number | null;
   weightKg?: number | null;
+  planType?: PlanType | null;
 };
 
 // Admin manually creates a member account + a one-time access code.
@@ -97,6 +100,24 @@ export async function createMember(input: CreateMemberInput): Promise<{
     })
     .eq("id", newUser.user.id);
   if (profError) return { error: profError.message, code: null, userId: null };
+
+  // Activate subscription immediately if a plan was chosen.
+  if (input.planType) {
+    const { error: actError } = await supabase.rpc("activate_subscription", {
+      p_user_id: newUser.user.id,
+      p_plan_type: input.planType,
+      p_method: "manual_coach",
+    });
+    if (actError) return { error: actError.message, code: null, userId: null };
+
+    await sendPushToUser(
+      newUser.user.id,
+      { title: "Membership Activated! 💪", body: "Your plan has been activated by the coach." },
+      "payment",
+      null,
+      "/dashboard"
+    );
+  }
 
   // Generate a unique access code.
   const adminId = await currentUserId();

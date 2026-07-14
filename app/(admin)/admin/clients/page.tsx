@@ -79,7 +79,7 @@ export default async function ClientsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-zinc-50">{t("clients.title")}</h1>
           <p className="text-sm text-zinc-400">{t("clients.subtitle")}</p>
         </div>
-        {viewerRole === "admin" && <AddMemberDialog />}
+        {viewerRole === "admin" && <AddMemberDialog plans={(plans as Plan[]) ?? []} />}
       </header>
 
       <Tabs defaultValue="active">
