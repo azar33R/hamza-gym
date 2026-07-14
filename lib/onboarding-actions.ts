@@ -58,3 +58,25 @@ export async function saveOnboarding(data: {
   revalidatePath("/onboarding");
   return { error: null };
 }
+
+// Let a member bypass the mandatory onboarding wizard. Marks the profile as
+// onboarded so the subscriber layout stops forcing the flow.
+export async function skipOnboarding(): Promise<{ error: string | null }> {
+  const ssr = await createSSRClient();
+  const {
+    data: { user },
+  } = await ssr.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+
+  const supabase = serviceClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ onboarded: true })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard");
+  revalidatePath("/onboarding");
+  return { error: null };
+}

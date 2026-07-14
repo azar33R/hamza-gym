@@ -40,6 +40,7 @@ export type Profile = {
   age?: number | null;
   face_photo_url?: string | null;
   workout_path?: WorkoutPath | null;
+  onboarded?: boolean | null;
   // Points economy (was total_xp). A SINGLE spendable balance: earning raises
   // it, buying cosmetics lowers it. The leaderboard ranks this exact number
   // and tier is derived from it too.

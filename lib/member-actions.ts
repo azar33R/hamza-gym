@@ -31,13 +31,19 @@ function randomPassword(): string {
 }
 
 function generateCodeString(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  // 6-digit numeric code — short and easy to read / type for members.
   let out = "";
-  for (let i = 0; i < 8; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (let i = 0; i < 6; i++) {
+    out += Math.floor(Math.random() * 10).toString();
   }
   return out;
 }
+
+// Shared default password for manually-created members. Lets a member who
+// forgot / never received their access code still sign in with their phone
+// or email + this password, then change it on first sign-in. Supabase requires
+// passwords >= 6 chars, so we append digits to "hamza".
+const DEFAULT_MEMBER_PASSWORD = "Hamza123";
 
 export type CreateMemberInput = {
   fullName: string;
@@ -68,7 +74,7 @@ export async function createMember(input: CreateMemberInput): Promise<{
   }
 
   const supabase = serviceClient();
-  const password = randomPassword();
+  const password = DEFAULT_MEMBER_PASSWORD;
 
   const createPayload: Record<string, unknown> = {
     password,

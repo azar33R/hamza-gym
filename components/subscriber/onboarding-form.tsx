@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveOnboarding } from "@/lib/onboarding-actions";
+import { saveOnboarding, skipOnboarding } from "@/lib/onboarding-actions";
 import type { WorkoutPath } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
@@ -33,6 +33,7 @@ export function OnboardingForm({ fullName }: { fullName: string | null }) {
   const router = useRouter();
   const { t } = useI18n();
   const [pending, startTransition] = useTransition();
+  const [skipPending, setSkipPending] = useState(false);
   const [step, setStep] = useState<0 | 1 | 2>(0);
 
   const [age, setAge] = useState("");
@@ -276,10 +277,21 @@ export function OnboardingForm({ fullName }: { fullName: string | null }) {
         <div className="mt-6 text-center">
           <button
             type="button"
-            onClick={() => { router.push("/dashboard"); router.refresh(); }}
-            className="text-sm text-zinc-500 underline underline-offset-2 hover:text-zinc-300"
+            disabled={skipPending}
+            onClick={async () => {
+              setSkipPending(true);
+              const res = await skipOnboarding();
+              setSkipPending(false);
+              if (res.error) {
+                toast.error(res.error);
+                return;
+              }
+              router.push("/dashboard");
+              router.refresh();
+            }}
+            className="text-sm text-zinc-500 underline underline-offset-2 hover:text-zinc-300 disabled:opacity-60"
           >
-            {t("onb.skip")}
+            {skipPending ? t("common.loading") : t("onb.skip")}
           </button>
         </div>
       </div>
