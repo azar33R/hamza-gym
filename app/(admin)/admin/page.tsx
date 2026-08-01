@@ -107,12 +107,14 @@ export default async function AdminHomePage() {
             value={`${Math.round(mrr)} EGP`}
             icon={<DollarSign className="h-4 w-4" />}
             revealable
+            href="/admin/settings/revenue"
           />
         )}
         <MetricCard
           label={t("admin.new_signups")}
           value={newSignups ?? 0}
           icon={<UserPlus className="h-4 w-4" />}
+          href="/admin/clients"
         />
         <MetricCard
           label={t("admin.active_members")}

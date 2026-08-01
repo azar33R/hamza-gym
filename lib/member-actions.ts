@@ -54,6 +54,7 @@ export type CreateMemberInput = {
   heightCm?: number | null;
   weightKg?: number | null;
   planType?: PlanType | null;
+  startDate?: string | null;
 };
 
 // Admin manually creates a member account + a one-time access code.
@@ -113,6 +114,7 @@ export async function createMember(input: CreateMemberInput): Promise<{
       p_user_id: newUser.user.id,
       p_plan_type: input.planType,
       p_method: "manual_coach",
+      p_start_date: input.startDate || null,
     });
     if (actError) return { error: actError.message, code: null, userId: null };
 

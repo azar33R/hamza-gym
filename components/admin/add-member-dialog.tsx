@@ -37,6 +37,9 @@ export function AddMemberDialog({ plans }: Props) {
   const [email, setEmail] = useState("");
   const [gender, setGender] = useState("");
   const [plan, setPlan] = useState("");
+  const [startDate, setStartDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [age, setAge] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
@@ -50,6 +53,7 @@ export function AddMemberDialog({ plans }: Props) {
     setEmail("");
     setGender("");
     setPlan("");
+    setStartDate(new Date().toISOString().split("T")[0]);
     setAge("");
     setHeight("");
     setWeight("");
@@ -70,6 +74,7 @@ export function AddMemberDialog({ plans }: Props) {
         email: email.trim() || null,
         gender: gender || null,
         planType: (plan as any) || null,
+        startDate: startDate || null,
         age: age ? Number(age) : null,
         heightCm: height ? Number(height) : null,
         weightKg: weight ? Number(weight) : null,
@@ -207,6 +212,17 @@ export function AddMemberDialog({ plans }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="m-start">{t("admin.members.start_date")}</Label>
+              <Input
+                id="m-start"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <p className="text-[11px] text-zinc-500">{t("admin.members.start_hint")}</p>
             </div>
 
             <div className="grid grid-cols-3 gap-3">

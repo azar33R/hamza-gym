@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ export function MetricCard({
   trend,
   className,
   revealable,
+  href,
 }: {
   label: string;
   value: string | number;
@@ -19,16 +21,12 @@ export function MetricCard({
   trend?: "up" | "down" | "neutral";
   className?: string;
   revealable?: boolean;
+  href?: string;
 }) {
   const [revealed, setRevealed] = useState(false);
 
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary/30",
-        className
-      )}
-    >
+  const content = (
+    <>
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
           {label}
@@ -44,13 +42,32 @@ export function MetricCard({
         {revealable && (
           <button
             type="button"
-            onClick={() => setRevealed((r) => !r)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setRevealed((r) => !r);
+            }}
             className="text-zinc-500 hover:text-zinc-300"
           >
             {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         )}
       </div>
-    </div>
+    </>
   );
+
+  const cls = cn(
+    "rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary/30",
+    className
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={cn(cls, "block cursor-pointer")}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={cls}>{content}</div>;
 }

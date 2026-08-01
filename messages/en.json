@@ -176,6 +176,8 @@
   "admin.members.gender_female": "Female",
   "admin.members.plan": "Plan",
   "admin.members.select_plan": "Select a plan",
+  "admin.members.start_date": "Plan start date",
+  "admin.members.start_hint": "Optional: backdate or schedule the plan start. Leave as today for an immediate start.",
   "admin.members.plan_required": "Please choose a plan.",
   "admin.members.age": "Age",
   "admin.members.height": "Height (cm)",

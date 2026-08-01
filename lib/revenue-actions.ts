@@ -105,13 +105,19 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
     });
   }
 
-  // Approved payment requests.
+  // Every paid activation — cash, approved Vodafone, or access code — records a
+  // subscriptions row. This is the source of truth for collected revenue.
+  const { data: subs } = await supabase
+    .from("subscriptions")
+    .select("plan_type, created_at");
+
+  // Pending Vodafone requests = money not yet collected.
   const { data: payments } = await supabase
     .from("payment_requests")
-    .select("plan_type, cardio_price_snapshot, created_at, status")
-    .in("status", ["approved", "pending"]);
+    .select("plan_type, cardio_price_snapshot")
+    .eq("status", "pending");
 
-  // Manual cash entries.
+  // Manual cash entries (day passes etc.).
   const { data: manual } = await supabase
     .from("manual_revenue")
     .select("*")
@@ -119,41 +125,46 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
 
   const manualRows = (manual ?? []) as ManualRevenue[];
 
-  // ---- Aggregate approved payments ----
   let totalRevenue = 0;
   let monthRevenue = 0;
   let pendingRevenue = 0;
+  let dayPassRevenue = 0;
   const byPlanMap = new Map<string, RevenueByPlan>();
   const dailyMap = new Map<string, RevenuePoint>();
+  const dayPassMap = new Map<string, { quantity: number; amount: number }>();
   const recent: RecentRevenue[] = [];
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  for (const pay of payments ?? []) {
-    const plan = planMap.get(pay.plan_type as string);
-    const price = (plan?.price ?? 0) + (Number(pay.cardio_price_snapshot) || 0);
-    const date = (pay.created_at as string).split("T")[0];
-
-    if (pay.status === "pending") {
-      pendingRevenue += price;
-      continue;
-    }
+  for (const s of (subs ?? []) as { plan_type: string; created_at: string }[]) {
+    const plan = planMap.get(s.plan_type as string);
+    if (!plan) continue;
+    const price = plan.price;
+    const date = (s.created_at as string).split("T")[0];
 
     totalRevenue += price;
     if (new Date(date) >= monthStart) monthRevenue += price;
 
+    if (s.plan_type === "1-day") {
+      dayPassRevenue += price;
+      const dp = dayPassMap.get(date) ?? { quantity: 0, amount: 0 };
+      dp.quantity += 1;
+      dp.amount += price;
+      dayPassMap.set(date, dp);
+    }
+
     const bp =
-      byPlanMap.get(pay.plan_type as string) ??
+      byPlanMap.get(s.plan_type as string) ??
       ({
-        plan_type: pay.plan_type as PlanType,
-        label: plan?.label ?? (pay.plan_type as string),
+        plan_type: s.plan_type as PlanType,
+        label: plan.label,
         revenue: 0,
         count: 0,
       } as RevenueByPlan);
     bp.revenue += price;
     bp.count += 1;
-    byPlanMap.set(pay.plan_type as string, bp);
+    byPlanMap.set(s.plan_type as string, bp);
 
     const dp =
       dailyMap.get(date) ?? ({ date, revenue: 0, dayPass: 0 } as RevenuePoint);
@@ -162,40 +173,45 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
 
     recent.push({
       date,
-      plan_type: pay.plan_type as string,
-      label: plan?.label ?? (pay.plan_type as string),
+      plan_type: s.plan_type as string,
+      label: plan.label,
       amount: price,
-      source: "payment",
+      source: s.plan_type === "1-day" ? "day_pass" : "payment",
       quantity: 1,
     });
   }
 
-  // ---- Manual cash (1-day passes etc.) ----
-  let dayPassRevenue = 0;
-  const manualByDate = new Map<string, { quantity: number; amount: number }>();
+  // Pending Vodafone requests.
+  for (const pay of payments ?? []) {
+    const plan = planMap.get(pay.plan_type as string);
+    const price = (plan?.price ?? 0) + (Number(pay.cardio_price_snapshot) || 0);
+    pendingRevenue += price;
+  }
+
+  // Manual cash entries.
   for (const m of manualRows) {
-    dayPassRevenue += Number(m.amount) || 0;
-    totalRevenue += Number(m.amount) || 0;
+    const amt = Number(m.amount) || 0;
+    dayPassRevenue += amt;
+    totalRevenue += amt;
     const date = m.log_date;
-    if (new Date(date) >= monthStart) monthRevenue += Number(m.amount) || 0;
+    if (new Date(date) >= monthStart) monthRevenue += amt;
 
     const dp =
       dailyMap.get(date) ?? ({ date, revenue: 0, dayPass: 0 } as RevenuePoint);
-    dp.dayPass += Number(m.amount) || 0;
-    dp.revenue += Number(m.amount) || 0;
+    dp.dayPass += amt;
+    dp.revenue += amt;
     dailyMap.set(date, dp);
 
-    const mb =
-      manualByDate.get(date) ?? { quantity: 0, amount: 0 };
-    mb.quantity += m.quantity;
-    mb.amount += Number(m.amount) || 0;
-    manualByDate.set(date, mb);
+    const dpm = dayPassMap.get(date) ?? { quantity: 0, amount: 0 };
+    dpm.quantity += m.quantity;
+    dpm.amount += amt;
+    dayPassMap.set(date, dpm);
 
     recent.push({
       date,
       plan_type: m.type,
       label: m.type === "day_pass" ? "1-Day Pass" : m.type,
-      amount: Number(m.amount) || 0,
+      amount: amt,
       source: "day_pass",
       quantity: m.quantity,
     });
@@ -216,7 +232,7 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = ymd(d);
-    dayPasses.push({ date: key, ...(manualByDate.get(key) ?? { quantity: 0, amount: 0 }) });
+    dayPasses.push({ date: key, ...(dayPassMap.get(key) ?? { quantity: 0, amount: 0 }) });
   }
 
   recent.sort((a, b) => (a.date < b.date ? 1 : -1));

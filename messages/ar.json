@@ -176,6 +176,8 @@
   "admin.members.gender_female": "أنثى",
   "admin.members.plan": "الخطة",
   "admin.members.select_plan": "اختر خطة",
+  "admin.members.start_date": "تاريخ بداية الخطة",
+  "admin.members.start_hint": "اختياري: قِدّ التاريخ أو جدوِله. سيب النهارده عشان يبدأ فورًا.",
   "admin.members.plan_required": "لازم تختار خطة.",
   "admin.members.age": "السن",
   "admin.members.height": "الطول (سم)",
