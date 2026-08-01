@@ -49,7 +49,10 @@ export function ClientsDirectory({
   viewerRole,
 }: {
   users: RowUser[];
-  latestSub: Map<string, { plan_type: string; end_date: string | null }>;
+  latestSub: Map<
+    string,
+    { plan_type: string; start_date: string | null; end_date: string | null }
+  >;
   plans: Plan[];
   templates: { id: string; name: string }[];
   viewerRole: UserRole;
@@ -177,6 +180,7 @@ export function ClientsDirectory({
       {selected && (
         <UserSettingsDialog
           user={selected}
+          sub={latestSub.get(selected.id) ?? null}
           plans={plans}
           attendance={[] as AttendanceLog[]}
           templates={templates}

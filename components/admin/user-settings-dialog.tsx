@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Ban, Loader2, ShieldCheck, Eye, EyeOff, MessageCircle } from "lucide-react";
+import { Trash2, Ban, Loader2, ShieldCheck, Eye, EyeOff, MessageCircle, CalendarClock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +42,7 @@ import {
   activateViaCash,
   cancelSubscription,
   deleteUser,
+  updateSubscriptionDates,
 } from "@/lib/user-management-actions";
 import { changeUserRole } from "@/lib/role-actions";
 import { WeeklySchedule } from "@/components/admin/weekly-schedule";
@@ -67,6 +70,7 @@ type UserData = {
 
 export function UserSettingsDialog({
   user,
+  sub,
   plans,
   attendance,
   templates,
@@ -75,6 +79,7 @@ export function UserSettingsDialog({
   onOpenChange,
 }: {
   user: UserData;
+  sub: { plan_type: string; start_date: string | null; end_date: string | null } | null;
   plans: Plan[];
   attendance: AttendanceLog[];
   templates: { id: string; name: string }[];
@@ -92,9 +97,22 @@ export function UserSettingsDialog({
   );
   const [role, setRole] = useState<UserRole>(user.role);
 
+  const today = new Date().toISOString().split("T")[0];
+  const [cashStartDate, setCashStartDate] = useState<string>(today);
+  const [subStart, setSubStart] = useState<string>(sub?.start_date ?? today);
+  const [subEnd, setSubEnd] = useState<string>(sub?.end_date ?? today);
+
   useEffect(() => {
     setRole(user.role);
   }, [user.role]);
+
+  // Reset the period editor whenever the dialog targets a different user.
+  useEffect(() => {
+    setCashStartDate(today);
+    setSubStart(sub?.start_date ?? today);
+    setSubEnd(sub?.end_date ?? today);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, user.id]);
 
   const isAdminViewer = viewerRole === "admin";
   const [scheduled, setScheduled] = useState<
@@ -153,6 +171,18 @@ export function UserSettingsDialog({
     });
   }
 
+  // "X days left" / "Ends today" / "Expired X days ago" for the overview tab.
+  function daysUntilLabel(endDate: string | null): string {
+    if (!endDate) return "—";
+    const end = new Date(endDate + "T00:00:00");
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const days = Math.round((end.getTime() - todayStart.getTime()) / 86400000);
+    if (days > 0) return t("admin.user_settings.days_left_count", { n: days });
+    if (days === 0) return t("admin.user_settings.ends_today");
+    return t("admin.user_settings.expired_days_ago", { n: Math.abs(days) });
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -183,6 +213,30 @@ export function UserSettingsDialog({
                 label={t("admin.user_settings.stats.member_since")}
                 value={new Date(user.created_at).toLocaleDateString()}
               />
+              {sub && (
+                <>
+                  <Stat
+                    label={t("admin.user_settings.stats.subscription_started")}
+                    value={
+                      sub.start_date
+                        ? new Date(sub.start_date + "T00:00:00").toLocaleDateString()
+                        : "—"
+                    }
+                  />
+                  <Stat
+                    label={t("admin.user_settings.stats.subscription_ends")}
+                    value={
+                      sub.end_date
+                        ? new Date(sub.end_date + "T00:00:00").toLocaleDateString()
+                        : "—"
+                    }
+                  />
+                  <Stat
+                    label={t("admin.user_settings.stats.days_left")}
+                    value={daysUntilLabel(sub.end_date)}
+                  />
+                </>
+              )}
               {isAdminViewer && contact && (
                 <>
                   <div className="rounded-lg bg-zinc-900 p-3">
@@ -255,6 +309,51 @@ export function UserSettingsDialog({
           {/* ---- Payment ---- */}
           <TabsContent value="payment">
             <div className="space-y-5">
+              {sub && (
+                <div className="rounded-lg border border-border bg-zinc-950/40 p-4">
+                  <h3 className="flex items-center gap-2 text-sm font-medium text-zinc-50">
+                    <CalendarClock className="h-4 w-4 text-primary" />
+                    {t("admin.user_settings.period_title")}
+                  </h3>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    {t("admin.user_settings.period_desc")}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="us-start">{t("admin.user_settings.start_date")}</Label>
+                      <Input
+                        id="us-start"
+                        type="date"
+                        value={subStart}
+                        onChange={(e) => setSubStart(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="us-end">{t("admin.user_settings.end_date")}</Label>
+                      <Input
+                        id="us-end"
+                        type="date"
+                        value={subEnd}
+                        onChange={(e) => setSubEnd(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    className="mt-3 w-full"
+                    disabled={pending}
+                    onClick={() =>
+                      run(
+                        () => updateSubscriptionDates(user.id, subStart, subEnd),
+                        t("admin.user_settings.dates_saved")
+                      )
+                    }
+                  >
+                    {pending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                    {t("admin.user_settings.save_dates")}
+                  </Button>
+                </div>
+              )}
+
               <div className="rounded-lg border border-border bg-zinc-950/40 p-4">
                 <h3 className="text-sm font-medium text-zinc-50">
                   {t("admin.user_settings.manual_payment")}
@@ -275,12 +374,29 @@ export function UserSettingsDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="us-cash-start">{t("admin.user_settings.start_date")}</Label>
+                    <Input
+                      id="us-cash-start"
+                      type="date"
+                      value={cashStartDate}
+                      onChange={(e) => setCashStartDate(e.target.value)}
+                    />
+                    <p className="text-[11px] text-zinc-500">
+                      {t("admin.user_settings.start_hint")}
+                    </p>
+                  </div>
                   <Button
                     className="w-full"
                     disabled={pending || !selectedPlan}
                     onClick={() =>
                       run(
-                        () => activateViaCash(user.id, selectedPlan as any),
+                        () =>
+                          activateViaCash(
+                            user.id,
+                            selectedPlan as any,
+                            cashStartDate
+                          ),
                         t("admin.user_settings.activated_msg"),
                         true
                       )

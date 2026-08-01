@@ -13,14 +13,20 @@ function serviceClient() {
   );
 }
 
-// Activate via physical cash — admin manual override.
-export async function activateViaCash(userId: string, planType: PlanType) {
+// Activate via physical cash — admin manual override. The coach can pick a
+// custom start date (past or future); default is today.
+export async function activateViaCash(
+  userId: string,
+  planType: PlanType,
+  startDate?: string | null
+) {
   const supabase = serviceClient();
 
   const { error } = await supabase.rpc("activate_subscription", {
     p_user_id: userId,
     p_plan_type: planType,
     p_method: "manual_coach" as PaymentMethod,
+    p_start_date: startDate || null,
   });
 
   if (error) return { error: error.message };
@@ -32,6 +38,52 @@ export async function activateViaCash(userId: string, planType: PlanType) {
     null,
     "/dashboard"
   );
+
+  revalidatePath("/admin/clients");
+  revalidatePath("/admin");
+  return { error: null };
+}
+
+// Edit an existing subscription's period — extend or shorten it. Updates the
+// most recent subscription row and flips the member back to active since the
+// coach is intentionally setting the period.
+export async function updateSubscriptionDates(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ error: string | null }> {
+  if (!startDate || !endDate) {
+    return { error: "Both start and end dates are required." };
+  }
+  if (new Date(endDate) < new Date(startDate)) {
+    return { error: "End date can't be before start date." };
+  }
+
+  const supabase = serviceClient();
+
+  // Find the current (most recent) subscription.
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!sub) {
+    return { error: "No subscription to edit. Use Activate via Cash first." };
+  }
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({ start_date: startDate, end_date: endDate })
+    .eq("id", sub.id);
+  if (error) return { error: error.message };
+
+  await supabase
+    .from("profiles")
+    .update({ subscription_status: "active" })
+    .eq("id", userId);
 
   revalidatePath("/admin/clients");
   revalidatePath("/admin");

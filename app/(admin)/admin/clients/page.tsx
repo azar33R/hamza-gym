@@ -48,16 +48,23 @@ export default async function ClientsPage() {
   const { data: subs } = activeIds.length
     ? await supabase
         .from("subscriptions")
-        .select("id, user_id, plan_type, end_date")
+        .select("id, user_id, plan_type, start_date, end_date")
         .in("user_id", activeIds)
         .order("created_at", { ascending: false })
     : { data: [] };
 
   // Keep the most recent subscription per user.
-  const latestSub = new Map<string, { plan_type: string; end_date: string | null }>();
+  const latestSub = new Map<
+    string,
+    { plan_type: string; start_date: string | null; end_date: string | null }
+  >();
   for (const s of subs ?? []) {
     if (!latestSub.has(s.user_id)) {
-      latestSub.set(s.user_id, { plan_type: s.plan_type, end_date: s.end_date });
+      latestSub.set(s.user_id, {
+        plan_type: s.plan_type,
+        start_date: s.start_date,
+        end_date: s.end_date,
+      });
     }
   }
 
