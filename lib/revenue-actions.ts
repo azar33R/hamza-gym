@@ -77,7 +77,11 @@ export type RevenueAnalytics = {
     monthRevenue: number;
     pendingRevenue: number;
     dayPassRevenue: number;
+    mrr: number;
+    futureRevenue: number;
   };
+  // Membership overview: latest subscription per member, bucketed by status.
+  breakdown: { active: number; future: number; expired: number };
   daily: RevenuePoint[];
   byPlan: RevenueByPlan[];
   dayPasses: { date: string; quantity: number; amount: number }[];
@@ -96,12 +100,13 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
   // Plans for pricing + labels.
   const { data: plans } = await supabase
     .from("plans")
-    .select("plan_type, label, price_egp");
-  const planMap = new Map<string, { label: string; price: number }>();
+    .select("plan_type, label, price_egp, duration_months");
+  const planMap = new Map<string, { label: string; price: number; durationMonths: number }>();
   for (const p of plans ?? []) {
     planMap.set(p.plan_type as string, {
       label: p.label,
       price: Number(p.price_egp) || 0,
+      durationMonths: Number(p.duration_months) || 0,
     });
   }
 
@@ -109,7 +114,8 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
   // subscriptions row. This is the source of truth for collected revenue.
   const { data: subs } = await supabase
     .from("subscriptions")
-    .select("plan_type, created_at");
+    .select("user_id, plan_type, start_date, end_date, created_at")
+    .order("created_at", { ascending: false });
 
   // Pending Vodafone requests = money not yet collected.
   const { data: payments } = await supabase
@@ -124,6 +130,13 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
     .order("log_date", { ascending: false });
 
   const manualRows = (manual ?? []) as ManualRevenue[];
+  const subRows = (subs ?? []) as {
+    user_id: string;
+    plan_type: string;
+    start_date: string | null;
+    end_date: string | null;
+    created_at: string;
+  }[];
 
   let totalRevenue = 0;
   let monthRevenue = 0;
@@ -137,7 +150,7 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  for (const s of (subs ?? []) as { plan_type: string; created_at: string }[]) {
+  for (const s of subRows) {
     const plan = planMap.get(s.plan_type as string);
     if (!plan) continue;
     const price = plan.price;
@@ -217,6 +230,48 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
     });
   }
 
+  // ---- Recurring / future / membership overview ---------------------------
+  // Latest subscription per member (subs are ordered created_at desc).
+  const latestByUser = new Map<
+    string,
+    { plan_type: string; start_date: string | null; end_date: string | null }
+  >();
+  for (const s of subRows) {
+    if (!latestByUser.has(s.user_id)) {
+      latestByUser.set(s.user_id, {
+        plan_type: s.plan_type,
+        start_date: s.start_date,
+        end_date: s.end_date,
+      });
+    }
+  }
+
+  const todayKey = ymd(new Date());
+  let mrr = 0;
+  let futureRevenue = 0;
+  const breakdown = { active: 0, future: 0, expired: 0 };
+
+  for (const s of latestByUser.values()) {
+    const plan = planMap.get(s.plan_type as string);
+    const price = plan?.price ?? 0;
+    const start = s.start_date ?? null;
+    const end = s.end_date ?? null;
+
+    if (start && start > todayKey) {
+      // Scheduled to start later — future member.
+      futureRevenue += price;
+      breakdown.future += 1;
+    } else if (end && end >= todayKey) {
+      // Currently covered by a membership.
+      breakdown.active += 1;
+      if (s.plan_type !== "1-day" && plan && plan.durationMonths > 0) {
+        mrr += price / plan.durationMonths;
+      }
+    } else {
+      breakdown.expired += 1;
+    }
+  }
+
   // ---- Build last 30 days series ----
   const daily: RevenuePoint[] = [];
   for (let i = 29; i >= 0; i--) {
@@ -243,7 +298,10 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
       monthRevenue: Math.round(monthRevenue),
       pendingRevenue: Math.round(pendingRevenue),
       dayPassRevenue: Math.round(dayPassRevenue),
+      mrr: Math.round(mrr),
+      futureRevenue: Math.round(futureRevenue),
     },
+    breakdown,
     daily,
     byPlan: Array.from(byPlanMap.values()).sort((a, b) => b.revenue - a.revenue),
     dayPasses,

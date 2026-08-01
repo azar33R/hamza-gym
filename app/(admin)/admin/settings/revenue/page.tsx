@@ -2,6 +2,7 @@ import { getT } from "@/lib/i18n/server";
 import { requireAdmin } from "@/lib/admin";
 import { getRevenueAnalytics } from "@/lib/revenue-actions";
 import { MetricCard } from "@/components/admin/metric-card";
+import { SegmentBar } from "@/components/admin/segment-bar";
 import { DayPassDialog } from "@/components/admin/day-pass-dialog";
 import { ManualRevenueList } from "@/components/admin/manual-revenue-list";
 import {
@@ -10,6 +11,8 @@ import {
   Clock,
   Ticket,
   ArrowLeft,
+  Repeat,
+  CalendarClock,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -79,7 +82,36 @@ export default async function RevenueAnalysisPage() {
           icon={<Ticket className="h-4 w-4" />}
           revealable
         />
+        <MetricCard
+          label={t("admin.revenue.mrr")}
+          value={fmt(data.totals.mrr)}
+          icon={<Repeat className="h-4 w-4" />}
+          revealable
+        />
+        <MetricCard
+          label={t("admin.revenue.future")}
+          value={fmt(data.totals.futureRevenue)}
+          icon={<CalendarClock className="h-4 w-4" />}
+          revealable
+        />
       </div>
+
+      {/* Membership overview — active now, scheduled later, ended */}
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <h2 className="text-sm font-medium text-zinc-400">
+          {t("admin.revenue.subs_overview")}
+        </h2>
+        <p className="mb-4 mt-1 text-xs text-zinc-500">
+          {t("admin.revenue.subs_overview_hint")}
+        </p>
+        <SegmentBar
+          segments={[
+            { label: t("admin.revenue.active"), value: data.breakdown.active, color: "hsl(83, 81%, 54%)" },
+            { label: t("admin.revenue.future"), value: data.breakdown.future, color: "hsl(38, 92%, 50%)" },
+            { label: t("admin.revenue.expired"), value: data.breakdown.expired, color: "hsl(240, 4%, 16%)" },
+          ]}
+        />
+      </section>
 
       {/* Revenue — last 30 days */}
       <section className="rounded-2xl border border-border bg-card p-5">
