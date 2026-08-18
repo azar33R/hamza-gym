@@ -151,6 +151,26 @@ export type PendingOp =
         }[];
       };
       createdAt: string;
+    }
+  // Admin manually adding a member offline. Carries the form fields plus an
+  // optional base64 image of the client's live photo — both are replayed into
+  // the real account once the coach is back online.
+  | {
+      id: string;
+      type: "createMember";
+      payload: {
+        fullName: string;
+        phone: string | null;
+        email: string | null;
+        gender: string | null;
+        age: number | null;
+        heightCm: number | null;
+        weightKg: number | null;
+        planType: string | null;
+        startDate: string | null;
+        photoDataUrl: string | null;
+      };
+      createdAt: string;
     };
 
 // A coarse status for a queued op. Anything not "done" is retried on sync.

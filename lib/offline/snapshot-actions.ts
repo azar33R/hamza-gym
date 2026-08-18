@@ -15,6 +15,7 @@ import type { SetLog } from "@/lib/types";
 import { getMyWeeklySchedule } from "@/lib/weekly-schedule-actions";
 import { fetchInbox, fetchThread } from "@/lib/chat-actions";
 import { pointsLeaderboard, ratioLeaderboard, weightLeaderboard } from "@/lib/leaderboard";
+import { createMemberRecord } from "@/lib/member-actions";
 import type {
   Profile,
   Subscription,
@@ -452,6 +453,25 @@ export async function applyQueuedOp(
         .eq("recipient_id", userId)
         .is("read_at", null);
       if (error) return { ok: false, error: error.message };
+      return { ok: true };
+    }
+    case "createMember": {
+      // Replay an offline member creation. The client op id is stamped on the
+      // profile so a partial/duplicate sync never creates a second account.
+      const res = await createMemberRecord({
+        fullName: op.payload.fullName,
+        phone: op.payload.phone,
+        email: op.payload.email,
+        gender: op.payload.gender,
+        age: op.payload.age,
+        heightCm: op.payload.heightCm,
+        weightKg: op.payload.weightKg,
+        planType: (op.payload.planType as never) || null,
+        startDate: op.payload.startDate,
+        photoDataUrl: op.payload.photoDataUrl,
+        clientOpId: op.id,
+      });
+      if (res.error) return { ok: false, error: res.error };
       return { ok: true };
     }
     default:

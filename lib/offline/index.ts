@@ -31,6 +31,7 @@ export {
   queueCompleteWorkout,
   queueSendMessage,
   queueMarkThreadRead,
+  queueCreateMember,
   pendingCount,
 } from "./queue";
 export type {

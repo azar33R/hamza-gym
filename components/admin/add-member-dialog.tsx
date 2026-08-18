@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { toast } from "sonner";
-import { Copy, Check, UserPlus } from "lucide-react";
+import { Copy, Check, UserPlus, CloudUpload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createMember } from "@/lib/member-actions";
+import { queueCreateMember } from "@/lib/offline";
+import { useOffline } from "@/lib/offline/context";
+import { LivePhotoCapture } from "@/components/admin/live-photo-capture";
 import type { Plan } from "@/lib/types";
 
 type Props = {
@@ -31,6 +34,7 @@ type Props = {
 
 export function AddMemberDialog({ plans }: Props) {
   const { t } = useI18n();
+  const { isOnline } = useOffline();
   const [open, setOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -43,7 +47,9 @@ export function AddMemberDialog({ plans }: Props) {
   const [age, setAge] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [queuedOffline, setQueuedOffline] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -57,7 +63,9 @@ export function AddMemberDialog({ plans }: Props) {
     setAge("");
     setHeight("");
     setWeight("");
+    setPhotoDataUrl(null);
     setGeneratedCode(null);
+    setQueuedOffline(false);
     setCopied(false);
   }
 
@@ -67,17 +75,33 @@ export function AddMemberDialog({ plans }: Props) {
       toast.error(t("admin.members.plan_required"));
       return;
     }
+
+    const payload = {
+      fullName,
+      phone: phone.trim() || null,
+      email: email.trim() || null,
+      gender: gender || null,
+      planType: (plan as any) || null,
+      startDate: startDate || null,
+      age: age ? Number(age) : null,
+      heightCm: height ? Number(height) : null,
+      weightKg: weight ? Number(weight) : null,
+    };
+
+    // Offline: save the form + live photo locally and queue them for replay
+    // the next time the coach's device is back online.
+    if (!isOnline) {
+      startTransition(async () => {
+        await queueCreateMember({ ...payload, photoDataUrl });
+        setQueuedOffline(true);
+      });
+      return;
+    }
+
     startTransition(async () => {
       const res = await createMember({
-        fullName,
-        phone: phone.trim() || null,
-        email: email.trim() || null,
-        gender: gender || null,
-        planType: (plan as any) || null,
-        startDate: startDate || null,
-        age: age ? Number(age) : null,
-        heightCm: height ? Number(height) : null,
-        weightKg: weight ? Number(weight) : null,
+        ...payload,
+        photoDataUrl,
       });
       if (res.error) {
         toast.error(res.error);
@@ -120,7 +144,18 @@ export function AddMemberDialog({ plans }: Props) {
           <DialogDescription>{t("admin.members.desc")}</DialogDescription>
         </DialogHeader>
 
-        {generatedCode ? (
+        {queuedOffline ? (
+          <div className="space-y-4 text-center">
+            <CloudUpload className="mx-auto h-10 w-10 text-primary" />
+            <p className="text-sm text-zinc-300">
+              {t("admin.members.queued_offline")}
+            </p>
+            <p className="text-xs text-zinc-500">{t("admin.members.queued_offline_hint")}</p>
+            <Button className="w-full" onClick={() => { setOpen(false); reset(); }}>
+              {t("common.done")}
+            </Button>
+          </div>
+        ) : generatedCode ? (
           <div className="space-y-4 text-center">
             <p className="text-sm text-zinc-400">{t("admin.members.give_code")}</p>
             <div className="flex items-center justify-center gap-3">
@@ -153,6 +188,22 @@ export function AddMemberDialog({ plans }: Props) {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("admin.members.photo")}</Label>
+              <LivePhotoCapture
+                value={photoDataUrl}
+                onCapture={(dataUrl) => setPhotoDataUrl(dataUrl)}
+                onClear={() => setPhotoDataUrl(null)}
+                takeLabel={t("admin.members.take_photo")}
+                captureLabel={t("admin.members.capture")}
+                retakeLabel={t("admin.members.retake_photo")}
+                removeLabel={t("admin.members.remove_photo")}
+                startingLabel={t("admin.members.camera_starting")}
+                deniedLabel={t("admin.members.camera_denied")}
+                galleryLabel={t("admin.members.choose_gallery")}
               />
             </div>
 

@@ -100,6 +100,37 @@ export async function queueMarkThreadRead(otherUserId: string): Promise<QueueIte
   return item;
 }
 
+// Admin adding a member while offline. The member form fields + the client's
+// live photo (base64) are queued locally and replayed by the sync engine once
+// the coach is back online.
+export async function queueCreateMember(payload: {
+  fullName: string;
+  phone?: string | null;
+  email?: string | null;
+  gender?: string | null;
+  age?: number | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  planType?: string | null;
+  startDate?: string | null;
+  photoDataUrl?: string | null;
+}): Promise<QueueItem> {
+  const item = make("createMember", {
+    fullName: payload.fullName,
+    phone: payload.phone ?? null,
+    email: payload.email ?? null,
+    gender: payload.gender ?? null,
+    age: payload.age ?? null,
+    heightCm: payload.heightCm ?? null,
+    weightKg: payload.weightKg ?? null,
+    planType: payload.planType ?? null,
+    startDate: payload.startDate ?? null,
+    photoDataUrl: payload.photoDataUrl ?? null,
+  });
+  await enqueue(item);
+  return item;
+}
+
 export async function pendingCount(): Promise<number> {
   return getQueueCount();
 }
