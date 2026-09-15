@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
+import { MemberAvatar } from "@/components/admin/member-avatar";
 import {
   Tabs,
   TabsContent,
@@ -37,11 +39,11 @@ export default async function TriagePage() {
     transaction_id: string;
     cardio: boolean;
     created_at: string;
-    profiles: { full_name: string | null } | null;
+    profiles: { full_name: string | null; face_photo_url: string | null } | null;
   };
   const { data: pendingReqs } = await supabase
     .from("payment_requests")
-    .select("id, user_id, plan_type, transaction_id, cardio, created_at, profiles(full_name)")
+    .select("id, user_id, plan_type, transaction_id, cardio, created_at, profiles(full_name, face_photo_url)")
     .eq("status", "pending")
     .order("created_at", { ascending: false })
     .returns<PendingReq[]>();
@@ -50,6 +52,7 @@ export default async function TriagePage() {
   type AwolRow = {
     id: string;
     full_name: string | null;
+    face_photo_url: string | null;
     last_workout_date: string | null;
     last_attendance_date: string | null;
     created_at: string;
@@ -58,7 +61,7 @@ export default async function TriagePage() {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const { data: awol } = await supabase
     .from("profiles")
-    .select("id, full_name, last_workout_date, last_attendance_date, created_at")
+    .select("id, full_name, face_photo_url, last_workout_date, last_attendance_date, created_at")
     .eq("subscription_status", "active")
     .or(`last_workout_date.is.null,last_workout_date.lt.${sevenDaysAgo.toISOString().split("T")[0]},last_attendance_date.is.null,last_attendance_date.lt.${sevenDaysAgo.toISOString().split("T")[0]}`)
     .order("created_at", { ascending: false });
@@ -69,13 +72,13 @@ export default async function TriagePage() {
     user_id: string;
     plan_type: string;
     end_date: string | null;
-    profiles: { full_name: string | null } | null;
+    profiles: { full_name: string | null; face_photo_url: string | null } | null;
   };
   const fiveDaysLater = new Date();
   fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
   const { data: expiring } = await supabase
     .from("subscriptions")
-    .select("id, user_id, plan_type, end_date, profiles(full_name)")
+    .select("id, user_id, plan_type, end_date, profiles(full_name, face_photo_url)")
     .lte("end_date", fiveDaysLater.toISOString().split("T")[0])
     .gte("end_date", new Date().toISOString().split("T")[0])
     .order("end_date", { ascending: true })
@@ -139,8 +142,19 @@ export default async function TriagePage() {
                 <TableBody>
                   {pendingReqs!.map((r: PendingReq) => (
                     <TableRow key={r.id}>
-                      <TableCell className="font-medium text-zinc-50">
-                        {r.profiles?.full_name ?? t("common.unknown")}
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <MemberAvatar
+                            photoUrl={r.profiles?.face_photo_url ?? null}
+                            name={r.profiles?.full_name}
+                          />
+                          <Link
+                            href={`/admin/clients/${r.user_id}`}
+                            className="font-medium text-zinc-50 underline-offset-4 hover:underline"
+                          >
+                            {r.profiles?.full_name ?? t("common.unknown")}
+                          </Link>
+                        </div>
                       </TableCell>
                        <TableCell className="capitalize text-zinc-300">
                          <span className="flex items-center gap-2">
@@ -189,8 +203,19 @@ export default async function TriagePage() {
                       (p.last_workout_date ?? p.last_attendance_date) as string | null;
                     return (
                       <TableRow key={p.id}>
-                        <TableCell className="font-medium text-zinc-50">
-                          {p.full_name ?? t("common.unknown")}
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <MemberAvatar
+                              photoUrl={p.face_photo_url}
+                              name={p.full_name}
+                            />
+                            <Link
+                              href={`/admin/clients/${p.id}`}
+                              className="font-medium text-zinc-50 underline-offset-4 hover:underline"
+                            >
+                              {p.full_name ?? t("common.unknown")}
+                            </Link>
+                          </div>
                         </TableCell>
                         <TableCell className="hidden text-zinc-400 sm:table-cell">
                           {last ? new Date(last).toLocaleDateString() : t("triage.never")}
@@ -226,8 +251,19 @@ export default async function TriagePage() {
                 <TableBody>
                   {expiring!.map((s: ExpiringSub) => (
                     <TableRow key={s.id}>
-                      <TableCell className="font-medium text-zinc-50">
-                        {s.profiles?.full_name ?? t("common.unknown")}
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <MemberAvatar
+                            photoUrl={s.profiles?.face_photo_url ?? null}
+                            name={s.profiles?.full_name}
+                          />
+                          <Link
+                            href={`/admin/clients/${s.user_id}`}
+                            className="font-medium text-zinc-50 underline-offset-4 hover:underline"
+                          >
+                            {s.profiles?.full_name ?? t("common.unknown")}
+                          </Link>
+                        </div>
                       </TableCell>
                       <TableCell className="capitalize text-zinc-300">
                         {s.plan_type.replace("-", " ")}
