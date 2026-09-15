@@ -15,24 +15,22 @@ import { requireStaffOrAdmin } from "@/lib/admin";
 import { getT } from "@/lib/i18n/server";
 import type { Plan } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ClientsPage() {
   const t = await getT();
   const { role: viewerRole } = await requireStaffOrAdmin();
   const supabase = await createClient();
 
-  // Fetch members with their latest subscription.
-  const { data: activeRaw } = await supabase
+  // Fetch ALL subscribers first — we partition into active/inactive below
+  // using the *effective* status (an "active" row whose latest subscription
+  // already ended counts as expired and belongs in the inactive tab, even
+  // if the member hasn't logged in to trigger the self-heal yet).
+  const { data: allSubs } = await supabase
     .from("profiles")
     .select("id, full_name, face_photo_url, subscription_status, created_at, height_cm, weight_kg, gender, role")
     .eq("role", "subscriber")
-    .eq("subscription_status", "active")
-    .order("created_at", { ascending: false });
-
-  const { data: inactiveRaw } = await supabase
-    .from("profiles")
-    .select("id, full_name, face_photo_url, subscription_status, created_at, height_cm, weight_kg, gender, role")
-    .eq("role", "subscriber")
-    .neq("subscription_status", "active")
     .order("created_at", { ascending: false });
 
   // Staff & admin users (visible only to admin viewers).
@@ -44,16 +42,17 @@ export default async function ClientsPage() {
         .order("created_at", { ascending: false })
     : { data: [] };
 
-  // Latest subscription per active user (for plan + expiry).
-  const activeIds = [
-    ...(activeRaw ?? []).map((p: { id: string }) => p.id),
-    ...(staffRaw ?? []).map((p: { id: string }) => p.id),
+  // Latest subscription per subscriber (for plan + expiry + effective status).
+  // Include staff ids too so the staff tab keeps its plan/expiry display.
+  const subIds = [
+    ...((allSubs ?? []).map((p: { id: string }) => p.id)),
+    ...((staffRaw ?? []).map((p: { id: string }) => p.id)),
   ];
-  const { data: subs } = activeIds.length
+  const { data: subs } = subIds.length
     ? await supabase
         .from("subscriptions")
         .select("id, user_id, plan_type, start_date, end_date")
-        .in("user_id", activeIds)
+        .in("user_id", subIds)
         .order("created_at", { ascending: false })
     : { data: [] };
 
@@ -70,6 +69,48 @@ export default async function ClientsPage() {
         end_date: s.end_date,
       });
     }
+  }
+
+  // Partition by *effective* status: an "active" profile whose latest
+  // subscription end_date is before today is treated as expired, so it
+  // shows (and counts) in the inactive tab immediately — no need to wait
+  // for the member to log in and trigger the self-heal.
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isEffectivelyExpired = (p: { id: string; subscription_status: string }) => {
+    if (p.subscription_status === "active") {
+      const end = latestSub.get(p.id)?.end_date ?? null;
+      if (end && end < todayStr) return true;
+    }
+    return p.subscription_status !== "active";
+  };
+
+  const activeRaw = (allSubs ?? []).filter(
+    (p) => !isEffectivelyExpired(p as { id: string; subscription_status: string })
+  );
+  // Present date-expired "active" rows as expired in the inactive tab.
+  const inactiveRaw = (allSubs ?? [])
+    .filter((p) => isEffectivelyExpired(p as { id: string; subscription_status: string }))
+    .map((p) =>
+      p.subscription_status === "active"
+        ? { ...p, subscription_status: "expired" as const }
+        : p
+    );
+
+  // Best-effort DB heal so other screens/counters stay consistent.
+  // (Inactive tab is already correct above even if this write fails.)
+  const staleIds = (allSubs ?? [])
+    .filter(
+      (p) =>
+        p.subscription_status === "active" &&
+        (latestSub.get(p.id)?.end_date ?? null) !== null &&
+        (latestSub.get(p.id)?.end_date as string) < todayStr
+    )
+    .map((p) => p.id);
+  if (staleIds.length > 0) {
+    await supabase
+      .from("profiles")
+      .update({ subscription_status: "expired" })
+      .in("id", staleIds);
   }
 
   // Expiring soon: subscriptions ending within the next 5 days.
