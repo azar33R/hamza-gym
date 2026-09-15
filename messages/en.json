@@ -56,6 +56,9 @@
   "admin.clients.member": "Member",
   "admin.clients.no_members": "No members here.",
   "admin.clients.no_results": "No members match your search.",
+  "admin.clients.days_left_count": "{n} days left",
+  "admin.clients.ends_today": "Ends today",
+  "admin.clients.expired_days_ago": "Expired {n} days ago",
   "admin.clients.search_placeholder": "Search by name, plan, or status…",
   "admin.clients.showing": "{n} of {total} members",
   "admin.clients.plan": "Plan",
@@ -586,6 +589,7 @@
   "clients.subtitle": "Manage all your members.",
   "clients.tab_active": "Active ({n})",
   "clients.tab_inactive": "Inactive ({n})",
+  "clients.tab_expiring": "Expiring ({n})",
   "clients.tab_staff": "Staff ({n})",
   "clients.title": "Clients",
 

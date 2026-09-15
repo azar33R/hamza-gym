@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 import { isOnboarded } from "@/lib/onboarding";
+import { healExpiredSubscription } from "@/lib/subscription-expiry";
 import { SubscriptionGate } from "@/components/subscriber/subscription-gate";
 import { BottomNav } from "@/components/subscriber/bottom-nav";
 import { OfflineBanner } from "@/components/pwa/offline-banner";
@@ -42,9 +43,16 @@ export default async function SubscriberLayout({
     user.user_metadata?.full_name ||
     null;
 
+  // Auto-expiry: a member whose latest subscription ended is flipped to
+  // "expired" on the spot, so the paywall below applies immediately.
+  const status = await healExpiredSubscription(
+    user.id,
+    profile?.subscription_status ?? "inactive"
+  );
+
   return (
     <SubscriptionGate
-      status={profile?.subscription_status ?? "inactive"}
+      status={status}
       fullName={fullName}
       onboarded={isOnboarded(profile)}
       needsPasswordSetup={profile?.force_password_setup ?? false}

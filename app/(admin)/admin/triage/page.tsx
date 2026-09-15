@@ -66,24 +66,6 @@ export default async function TriagePage() {
     .or(`last_workout_date.is.null,last_workout_date.lt.${sevenDaysAgo.toISOString().split("T")[0]},last_attendance_date.is.null,last_attendance_date.lt.${sevenDaysAgo.toISOString().split("T")[0]}`)
     .order("created_at", { ascending: false });
 
-  // 3) Expiring soon: active subscriptions ending within 5 days
-  type ExpiringSub = {
-    id: string;
-    user_id: string;
-    plan_type: string;
-    end_date: string | null;
-    profiles: { full_name: string | null; face_photo_url: string | null } | null;
-  };
-  const fiveDaysLater = new Date();
-  fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
-  const { data: expiring } = await supabase
-    .from("subscriptions")
-    .select("id, user_id, plan_type, end_date, profiles(full_name, face_photo_url)")
-    .lte("end_date", fiveDaysLater.toISOString().split("T")[0])
-    .gte("end_date", new Date().toISOString().split("T")[0])
-    .order("end_date", { ascending: true })
-    .returns<ExpiringSub[]>();
-
   // 4) Pending lift verifications
   const { submissions: liftSubmissions } = await pendingLifts();
 
@@ -108,12 +90,6 @@ export default async function TriagePage() {
             {t("triage.awol")}
             <Badge variant="muted" className="ms-1.5">
               {awol?.length ?? 0}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="expiring">
-            {t("triage.expiring")}
-            <Badge variant="muted" className="ms-1.5">
-              {expiring?.length ?? 0}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="lifts">
@@ -228,51 +204,6 @@ export default async function TriagePage() {
                       </TableRow>
                     );
                   })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ---- Expiring Soon ---- */}
-        <TabsContent value="expiring">
-          {(expiring?.length ?? 0) === 0 ? (
-            <EmptyState message={t("triage.no_expiring")} />
-          ) : (
-            <div className="rounded-xl border border-border bg-card">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("triage.col_member")}</TableHead>
-                    <TableHead>{t("triage.col_plan")}</TableHead>
-                    <TableHead className="text-end">{t("triage.col_expires")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {expiring!.map((s: ExpiringSub) => (
-                    <TableRow key={s.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <MemberAvatar
-                            photoUrl={s.profiles?.face_photo_url ?? null}
-                            name={s.profiles?.full_name}
-                          />
-                          <Link
-                            href={`/admin/clients/${s.user_id}`}
-                            className="font-medium text-zinc-50 underline-offset-4 hover:underline"
-                          >
-                            {s.profiles?.full_name ?? t("common.unknown")}
-                          </Link>
-                        </div>
-                      </TableCell>
-                      <TableCell className="capitalize text-zinc-300">
-                        {s.plan_type.replace("-", " ")}
-                      </TableCell>
-                      <TableCell className="text-right text-zinc-400">
-                        {s.end_date ? new Date(s.end_date).toLocaleDateString() : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
                 </TableBody>
               </Table>
             </div>

@@ -6,6 +6,10 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ClientsDirectory } from "@/components/admin/clients-directory";
+import {
+  ExpiringTable,
+  type ExpiringRow,
+} from "@/components/admin/expiring-table";
 import { AddMemberDialog } from "@/components/admin/add-member-dialog";
 import { requireStaffOrAdmin } from "@/lib/admin";
 import { getT } from "@/lib/i18n/server";
@@ -68,6 +72,20 @@ export default async function ClientsPage() {
     }
   }
 
+  // Expiring soon: subscriptions ending within the next 5 days.
+  const fiveDaysLater = new Date();
+  fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
+  const todayKey = new Date().toISOString().split("T")[0];
+  const { data: expiring } = await supabase
+    .from("subscriptions")
+    .select(
+      "id, user_id, plan_type, start_date, end_date, profiles(id, full_name, face_photo_url, subscription_status, created_at, height_cm, weight_kg, gender, role)"
+    )
+    .lte("end_date", fiveDaysLater.toISOString().split("T")[0])
+    .gte("end_date", todayKey)
+    .order("end_date", { ascending: true })
+    .returns<ExpiringRow[]>();
+
   const { data: plans } = await supabase
     .from("plans")
     .select("*")
@@ -97,6 +115,9 @@ export default async function ClientsPage() {
           <TabsTrigger value="inactive">
             {t("clients.tab_inactive", { n: inactiveRaw?.length ?? 0 })}
           </TabsTrigger>
+          <TabsTrigger value="expiring">
+            {t("clients.tab_expiring", { n: expiring?.length ?? 0 })}
+          </TabsTrigger>
           {viewerRole === "admin" && (
             <TabsTrigger value="staff">
               {t("clients.tab_staff", { n: (staffRaw ?? []).filter((p: { role: string }) => p.role !== "admin").length })}
@@ -122,6 +143,21 @@ export default async function ClientsPage() {
             templates={(templates as { id: string; name: string }[]) ?? []}
             viewerRole={viewerRole}
           />
+        </TabsContent>
+
+        <TabsContent value="expiring">
+          {(expiring?.length ?? 0) === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-zinc-400">
+              {t("triage.no_expiring")}
+            </div>
+          ) : (
+            <ExpiringTable
+              rows={expiring ?? []}
+              plans={(plans as Plan[]) ?? []}
+              templates={(templates as { id: string; name: string }[]) ?? []}
+              viewerRole={viewerRole}
+            />
+          )}
         </TabsContent>
 
         {viewerRole === "admin" && (

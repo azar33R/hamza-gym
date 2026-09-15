@@ -56,6 +56,9 @@
   "admin.clients.member": "العضو",
   "admin.clients.no_members": "مفيش أعضاء هنا.",
   "admin.clients.no_results": "مفيش عضو مطابق لبحثك.",
+  "admin.clients.days_left_count": "باقي {n} يوم",
+  "admin.clients.ends_today": "ينتهي اليوم",
+  "admin.clients.expired_days_ago": "انتهى من {n} يوم",
   "admin.clients.search_placeholder": "دوّر بالاسم أو الخطة أو الحالة…",
   "admin.clients.showing": "{n} من {total} عضو",
   "admin.clients.plan": "الخطة",
@@ -586,6 +589,7 @@
   "clients.subtitle": "إدارة كل المتدربين.",
   "clients.tab_active": "نشط ({n})",
   "clients.tab_inactive": "غير نشط ({n})",
+  "clients.tab_expiring": "ينتهي قريبًا ({n})",
   "clients.tab_staff": "الكباتن ({n})",
   "clients.title": "الأعضاء",
 

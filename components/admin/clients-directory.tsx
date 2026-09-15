@@ -49,6 +49,16 @@ function norm(s: string) {
     .trim();
 }
 
+// Whole days from today (date-only, UTC) until the given YYYY-MM-DD date.
+// Negative = already ended that many days ago.
+function daysUntil(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
+  const ms =
+    Date.parse(`${dateStr}T00:00:00Z`) -
+    Date.parse(`${new Date().toISOString().split("T")[0]}T00:00:00Z`);
+  return Math.round(ms / 86400000);
+}
+
 export function ClientsDirectory({
   users,
   latestSub,
@@ -197,10 +207,41 @@ export function ClientsDirectory({
                     <TableCell className="capitalize text-zinc-300">
                       {sub?.plan_type?.replace("-", " ") ?? "—"}
                     </TableCell>
-                    <TableCell className="hidden text-zinc-400 sm:table-cell">
-                      {sub?.end_date
-                        ? new Date(sub.end_date).toLocaleDateString()
-                        : "—"}
+                    <TableCell className="hidden sm:table-cell">
+                      {sub?.end_date ? (
+                        <div>
+                          <span className="text-zinc-300">
+                            {new Date(sub.end_date).toLocaleDateString()}
+                          </span>
+                          {(() => {
+                            const left = daysUntil(sub.end_date);
+                            if (left === null) return null;
+                            if (left < 0)
+                              return (
+                                <p className="text-xs text-red-400">
+                                  {t("admin.clients.expired_days_ago", {
+                                    n: Math.abs(left),
+                                  })}
+                                </p>
+                              );
+                            if (left === 0)
+                              return (
+                                <p className="text-xs text-amber-400">
+                                  {t("admin.clients.ends_today")}
+                                </p>
+                              );
+                            return (
+                              <p className="text-xs text-zinc-500">
+                                {t("admin.clients.days_left_count", {
+                                  n: left,
+                                })}
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <span className="text-zinc-400">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-end">
                       <div className="flex justify-end gap-1">
