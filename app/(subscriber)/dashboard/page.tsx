@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getT } from "@/lib/i18n/server";
+import { getT, getLocale } from "@/lib/i18n/server";
 import {
   CheckCircle2,
   Dumbbell,
@@ -26,6 +26,7 @@ import {
   bannerGradient,
 } from "@/lib/constants";
 import { cn, daysLeftUntil } from "@/lib/utils";
+import { arabicDaysLeft, isArabicLocale } from "@/lib/arabic-days";
 import { ensurePlanEndingNotification } from "@/lib/notification-actions";
 
 function isToday(dateStr?: string | null): boolean {
@@ -83,6 +84,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const t = await getT();
+  const ar = isArabicLocale(await getLocale());
   const supabase = await createClient();
   const {
     data: { user },
@@ -482,7 +484,11 @@ export default async function DashboardPage() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-zinc-100">
-              {daysLeft === 1 ? t("dashboard.day_left", { n: daysLeft }) : t("dashboard.days_left", { n: daysLeft })}
+              {ar
+                ? arabicDaysLeft(daysLeft)
+                : daysLeft === 1
+                  ? t("dashboard.day_left", { n: daysLeft })
+                  : t("dashboard.days_left", { n: daysLeft })}
             </p>
             <p className="text-[11px] capitalize text-zinc-500">
               {t("dashboard.plan_label", { plan: planLabel })}

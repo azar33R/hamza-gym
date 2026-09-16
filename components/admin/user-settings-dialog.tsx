@@ -54,6 +54,11 @@ import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
 import { getUserAuthInfo } from "@/lib/admin-user-actions";
 import { WhatsAppRenewalButton } from "@/components/admin/whatsapp-renewal-button";
+import {
+  arabicExpiredAgo,
+  arabicRemaining,
+  isArabicLocale,
+} from "@/lib/arabic-days";
 import { normalizeEGPhone } from "@/lib/phone";
 import { removeWorkout } from "@/lib/schedule-actions";
 import { Lock } from "lucide-react";
@@ -88,7 +93,8 @@ export function UserSettingsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const ar = isArabicLocale(locale);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const can = useWriteGuard();
@@ -179,9 +185,14 @@ export function UserSettingsDialog({
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const days = Math.round((end.getTime() - todayStart.getTime()) / 86400000);
-    if (days > 0) return t("admin.user_settings.days_left_count", { n: days });
+    if (days > 0)
+      return ar
+        ? arabicRemaining(days)
+        : t("admin.user_settings.days_left_count", { n: days });
     if (days === 0) return t("admin.user_settings.ends_today");
-    return t("admin.user_settings.expired_days_ago", { n: Math.abs(days) });
+    return ar
+      ? arabicExpiredAgo(Math.abs(days))
+      : t("admin.user_settings.expired_days_ago", { n: Math.abs(days) });
   }
 
   return (

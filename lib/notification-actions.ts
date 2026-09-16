@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/lib/supabase/server";
+import { arabicRemainVerb } from "@/lib/arabic-days";
 import type { Notification } from "@/lib/types";
 
 // Service-role client — bypasses RLS so the caller can read + update their own
@@ -135,7 +136,7 @@ export async function ensurePlanEndingNotification(
     user_id: userId,
     type: "plan_ending",
     title: "اشتراكك أوشك على الانتهاء",
-    body: `تبقّى ${daysLeft} يوم على انتهاء اشتراكك. جدّد الآن لتجنّب توقّف الوصول.`,
+    body: `${arabicRemainVerb(daysLeft)} على انتهاء اشتراكك. جدّد الآن لتجنّب توقّف الوصول.`,
     is_read: false,
   });
 

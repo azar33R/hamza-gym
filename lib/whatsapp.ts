@@ -2,6 +2,11 @@
 //
 // The coach taps one button in the admin action bar and WhatsApp opens
 // straight into the member's chat with the name + expiry date already typed.
+import {
+  arabicParentheticalAgo,
+  arabicParentheticalLeft,
+  isArabicLocale,
+} from "@/lib/arabic-days";
 
 export type RenewalMode = "expired" | "expiring";
 
@@ -37,8 +42,8 @@ type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 /**
  * Build the renewal text. Uses i18n templates so AR/EN stay in messages/*.json:
- * - expired  -> admin.whatsapp.reminder_expired  ({name} {date} {n})
- * - expiring -> admin.whatsapp.reminder_expiring ({name} {date} {n})
+ * - expired  -> admin.whatsapp.reminder_expired  ({name} {date} {phrase}|{n})
+ * - expiring -> admin.whatsapp.reminder_expiring ({name} {date} {phrase}|{n})
  * - no date  -> admin.whatsapp.reminder_no_date  ({name})
  */
 export function buildRenewalMessage(
@@ -58,22 +63,39 @@ export function buildRenewalMessage(
   if (!opts.endDate || left === null) {
     return { text: t("admin.whatsapp.reminder_no_date", { name }), mode };
   }
+  // Arabic templates use a pre-built {phrase} parenthetical so يوم gets its
+  // correct dual/plural form (يومين / أيام / يوم). English keeps {n}.
   if (mode === "expired") {
+    const ago = Math.abs(left);
     return {
-      text: t("admin.whatsapp.reminder_expired", {
-        name,
-        date,
-        n: Math.abs(left),
-      }),
+      text: isArabicLocale(opts.locale)
+        ? t("admin.whatsapp.reminder_expired", {
+            name,
+            date,
+            phrase: arabicParentheticalAgo(ago),
+            n: ago,
+          })
+        : t("admin.whatsapp.reminder_expired", {
+            name,
+            date,
+            n: ago,
+          }),
       mode,
     };
   }
   return {
-    text: t("admin.whatsapp.reminder_expiring", {
-      name,
-      date,
-      n: left,
-    }),
+    text: isArabicLocale(opts.locale)
+      ? t("admin.whatsapp.reminder_expiring", {
+          name,
+          date,
+          phrase: arabicParentheticalLeft(left),
+          n: left,
+        })
+      : t("admin.whatsapp.reminder_expiring", {
+          name,
+          date,
+          n: left,
+        }),
     mode,
   };
 }

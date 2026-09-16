@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/client";
+import { arabicAgo, isArabicLocale } from "@/lib/arabic-days";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ChatContact } from "@/lib/chat-actions";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ function initials(name: string | null | undefined): string {
 function formatRelativeTime(
   iso: string | null,
   t: (key: string, vars?: Record<string, string | number>) => string,
+  locale: string,
 ): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -32,7 +34,10 @@ function formatRelativeTime(
   if (diffMin < 60) return t("chat.minutes_ago", { n: diffMin });
   if (diffHour < 24) return t("chat.hours_ago", { n: diffHour });
   if (diffDay === 1) return t("chat.yesterday");
-  if (diffDay < 7) return t("chat.days_ago", { n: diffDay });
+  if (diffDay < 7)
+    return isArabicLocale(locale)
+      ? arabicAgo(diffDay)
+      : t("chat.days_ago", { n: diffDay });
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
@@ -43,7 +48,7 @@ export function ChatInbox({
   contacts: ChatContact[];
   basePath: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   if (contacts.length === 0) {
     return (
@@ -88,7 +93,7 @@ export function ChatInbox({
               </span>
               {c.last_at && (
                 <span className="ms-auto shrink-0 text-[11px] text-zinc-500">
-                  {formatRelativeTime(c.last_at, t)}
+                  {formatRelativeTime(c.last_at, t, locale)}
                 </span>
               )}
             </div>

@@ -23,6 +23,7 @@ import { CheckInTrigger } from "@/components/subscriber/check-in-trigger";
 import { cn } from "@/lib/utils";
 import { tierFloor, nextTier, POINT_REWARDS, bannerGradient } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
+import { arabicDaysLeft, isArabicLocale } from "@/lib/arabic-days";
 import type { DashboardData } from "@/app/(subscriber)/tab-actions";
 import type { Tier } from "@/lib/types";
 import { CheckInModal } from "@/components/subscriber/check-in-modal";
@@ -63,7 +64,8 @@ export function DashboardShell({
   data: DashboardData;
   userId: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const ar = isArabicLocale(locale);
   const [pinOpen, setPinOpen] = useState(false);
   const {
     profile,
@@ -342,7 +344,11 @@ export function DashboardShell({
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-zinc-100">
-              {daysLeft === 1 ? t("dashboard.day_left", { n: daysLeft }) : t("dashboard.days_left", { n: daysLeft })}
+              {ar
+                ? arabicDaysLeft(daysLeft)
+                : daysLeft === 1
+                  ? t("dashboard.day_left", { n: daysLeft })
+                  : t("dashboard.days_left", { n: daysLeft })}
             </p>
             <p className="text-[11px] capitalize text-zinc-500">
               {t("dashboard.plan_label", { plan: planLabel ?? "" })}

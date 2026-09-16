@@ -17,6 +17,11 @@ import { Input } from "@/components/ui/input";
 import { MemberAvatar } from "@/components/admin/member-avatar";
 import { UserSettingsDialog } from "@/components/admin/user-settings-dialog";
 import { WhatsAppRenewalButton } from "@/components/admin/whatsapp-renewal-button";
+import {
+  arabicDaysLeft,
+  arabicExpiredAgo,
+  isArabicLocale,
+} from "@/lib/arabic-days";
 import type { Plan, AttendanceLog } from "@/lib/types";
 import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
@@ -79,7 +84,8 @@ export function ClientsDirectory({
   /** True for the inactive/expired tab: shows the WhatsApp renewal icon in ACTIONS. */
   showRenewal?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const ar = isArabicLocale(locale);
   const [selected, setSelected] = useState<RowUser | null>(null);
   const [query, setQuery] = useState("");
 
@@ -223,9 +229,11 @@ export function ClientsDirectory({
                             if (left < 0)
                               return (
                                 <p className="text-xs text-red-400">
-                                  {t("admin.clients.expired_days_ago", {
-                                    n: Math.abs(left),
-                                  })}
+                                  {ar
+                                    ? arabicExpiredAgo(Math.abs(left))
+                                    : t("admin.clients.expired_days_ago", {
+                                        n: Math.abs(left),
+                                      })}
                                 </p>
                               );
                             if (left === 0)
@@ -236,9 +244,11 @@ export function ClientsDirectory({
                               );
                             return (
                               <p className="text-xs text-zinc-500">
-                                {t("admin.clients.days_left_count", {
-                                  n: left,
-                                })}
+                                {ar
+                                  ? arabicDaysLeft(left)
+                                  : t("admin.clients.days_left_count", {
+                                      n: left,
+                                    })}
                               </p>
                             );
                           })()}

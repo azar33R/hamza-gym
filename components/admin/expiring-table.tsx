@@ -15,6 +15,11 @@ import { Button } from "@/components/ui/button";
 import { MemberAvatar } from "@/components/admin/member-avatar";
 import { UserSettingsDialog } from "@/components/admin/user-settings-dialog";
 import { WhatsAppRenewalButton } from "@/components/admin/whatsapp-renewal-button";
+import {
+  arabicDaysLeft,
+  arabicExpiredAgo,
+  isArabicLocale,
+} from "@/lib/arabic-days";
 import type { Plan, AttendanceLog } from "@/lib/types";
 import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
@@ -62,7 +67,21 @@ export function ExpiringTable({
   templates: { id: string; name: string }[];
   viewerRole: UserRole;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const ar = isArabicLocale(locale);
+
+  // Localized "x days left / expired" line with correct Arabic يوم forms.
+  function leftLabel(left: number | null): string {
+    if (left === null) return "";
+    if (left < 0)
+      return ar
+        ? arabicExpiredAgo(Math.abs(left))
+        : t("admin.clients.expired_days_ago", { n: Math.abs(left) });
+    if (left === 0) return t("admin.clients.ends_today");
+    return ar
+      ? arabicDaysLeft(left)
+      : t("admin.clients.days_left_count", { n: left });
+  }
   const [selected, setSelected] = useState<ExpiringRow["profiles"] | null>(
     null
   );
@@ -116,16 +135,7 @@ export function ExpiringTable({
                       </Link>
                       <span className="text-xs text-zinc-400 sm:hidden">
                         {s.end_date
-                          ? `${new Date(s.end_date).toLocaleDateString()} · ${(() => {
-                              const left = daysUntil(s.end_date);
-                              if (left === null) return "";
-                              if (left < 0)
-                                return t("admin.clients.expired_days_ago", {
-                                  n: Math.abs(left),
-                                });
-                              if (left === 0) return t("admin.clients.ends_today");
-                              return t("admin.clients.days_left_count", { n: left });
-                            })()}`
+                          ? `${new Date(s.end_date).toLocaleDateString()} · ${leftLabel(daysUntil(s.end_date))}`
                           : "—"}
                       </span>
                     </div>
@@ -143,23 +153,18 @@ export function ExpiringTable({
                       {(() => {
                         const left = daysUntil(s.end_date);
                         if (left === null) return null;
-                        if (left < 0)
-                          return (
-                            <p className="text-xs text-red-400">
-                              {t("admin.clients.expired_days_ago", {
-                                n: Math.abs(left),
-                              })}
-                            </p>
-                          );
                         if (left === 0)
                           return (
                             <p className="text-xs text-amber-400">
                               {t("admin.clients.ends_today")}
                             </p>
                           );
+                        const expired = left < 0;
                         return (
-                          <p className="text-xs text-zinc-500">
-                            {t("admin.clients.days_left_count", { n: left })}
+                          <p
+                            className={`text-xs ${expired ? "text-red-400" : "text-zinc-500"}`}
+                          >
+                            {leftLabel(left)}
                           </p>
                         );
                       })()}
