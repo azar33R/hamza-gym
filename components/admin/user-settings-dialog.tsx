@@ -53,6 +53,7 @@ import type { Plan, AttendanceLog } from "@/lib/types";
 import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
 import { getUserAuthInfo } from "@/lib/admin-user-actions";
+import { WhatsAppRenewalButton } from "@/components/admin/whatsapp-renewal-button";
 import { normalizeEGPhone } from "@/lib/phone";
 import { removeWorkout } from "@/lib/schedule-actions";
 import { Lock } from "lucide-react";
@@ -264,20 +265,30 @@ export function UserSettingsDialog({
                )}
 
                {isAdminViewer && contact?.phone && (() => {
-                 const wa = normalizeEGPhone(contact.phone!);
-                 if (!wa) return null;
-                 return (
-                   <a
-                     href={`https://wa.me/${wa.replace("+", "")}`}
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-                   >
-                     <MessageCircle className="h-4 w-4" />
-                     {t("admin.user_settings.whatsapp")}
-                   </a>
-                 );
-               })()}
+                  const wa = normalizeEGPhone(contact.phone!);
+                  if (!wa) return null;
+                  return (
+                    <div className="col-span-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <a
+                        href={`https://wa.me/${wa.replace("+", "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={t("admin.whatsapp.open_chat")}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        {t("admin.user_settings.whatsapp")}
+                      </a>
+                      <WhatsAppRenewalButton
+                        userId={user.id}
+                        fullName={user.full_name}
+                        endDate={sub?.end_date ?? null}
+                        variant="full"
+                        preloadedPhone={contact.phone}
+                      />
+                    </div>
+                  );
+                })()}
             </dl>
 
             <div className="mt-5">

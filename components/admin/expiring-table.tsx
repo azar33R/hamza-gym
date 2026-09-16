@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MemberAvatar } from "@/components/admin/member-avatar";
 import { UserSettingsDialog } from "@/components/admin/user-settings-dialog";
+import { WhatsAppRenewalButton } from "@/components/admin/whatsapp-renewal-button";
 import type { Plan, AttendanceLog } from "@/lib/types";
 import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
@@ -36,6 +37,16 @@ export type ExpiringRow = {
     role: UserRole;
   } | null;
 };
+
+// Whole days from today (date-only, UTC) until YYYY-MM-DD — same math as the
+// clients directory so the "x days left" line matches everywhere.
+function daysUntil(dateStr: string | null | undefined): number | null {
+  if (!dateStr) return null;
+  const ms =
+    Date.parse(`${dateStr}T00:00:00Z`) -
+    Date.parse(`${new Date().toISOString().split("T")[0]}T00:00:00Z`);
+  return Math.round(ms / 86400000);
+}
 
 // Expiring-soon table with the same member actions as the clients
 // directory: avatar enlarge, profile link, chat shortcut, and the full
@@ -105,7 +116,16 @@ export function ExpiringTable({
                       </Link>
                       <span className="text-xs text-zinc-400 sm:hidden">
                         {s.end_date
-                          ? new Date(s.end_date).toLocaleDateString()
+                          ? `${new Date(s.end_date).toLocaleDateString()} · ${(() => {
+                              const left = daysUntil(s.end_date);
+                              if (left === null) return "";
+                              if (left < 0)
+                                return t("admin.clients.expired_days_ago", {
+                                  n: Math.abs(left),
+                                });
+                              if (left === 0) return t("admin.clients.ends_today");
+                              return t("admin.clients.days_left_count", { n: left });
+                            })()}`
                           : "—"}
                       </span>
                     </div>
@@ -114,13 +134,48 @@ export function ExpiringTable({
                 <TableCell className="capitalize text-zinc-300">
                   {s.plan_type.replace("-", " ")}
                 </TableCell>
-                <TableCell className="hidden text-zinc-400 sm:table-cell">
-                  {s.end_date
-                    ? new Date(s.end_date).toLocaleDateString()
-                    : "—"}
+                <TableCell className="hidden sm:table-cell">
+                  {s.end_date ? (
+                    <div>
+                      <span className="text-zinc-400">
+                        {new Date(s.end_date).toLocaleDateString()}
+                      </span>
+                      {(() => {
+                        const left = daysUntil(s.end_date);
+                        if (left === null) return null;
+                        if (left < 0)
+                          return (
+                            <p className="text-xs text-red-400">
+                              {t("admin.clients.expired_days_ago", {
+                                n: Math.abs(left),
+                              })}
+                            </p>
+                          );
+                        if (left === 0)
+                          return (
+                            <p className="text-xs text-amber-400">
+                              {t("admin.clients.ends_today")}
+                            </p>
+                          );
+                        return (
+                          <p className="text-xs text-zinc-500">
+                            {t("admin.clients.days_left_count", { n: left })}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-end">
                   <div className="flex justify-end gap-1">
+                    <WhatsAppRenewalButton
+                      userId={s.user_id}
+                      fullName={s.profiles?.full_name ?? null}
+                      endDate={s.end_date}
+                      variant="icon"
+                    />
                     <Button
                       asChild
                       size="icon"

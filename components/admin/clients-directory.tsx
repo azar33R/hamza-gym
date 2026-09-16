@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { MemberAvatar } from "@/components/admin/member-avatar";
 import { UserSettingsDialog } from "@/components/admin/user-settings-dialog";
+import { WhatsAppRenewalButton } from "@/components/admin/whatsapp-renewal-button";
 import type { Plan, AttendanceLog } from "@/lib/types";
 import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
@@ -65,6 +66,7 @@ export function ClientsDirectory({
   plans,
   templates,
   viewerRole,
+  showRenewal = false,
 }: {
   users: RowUser[];
   latestSub: Map<
@@ -74,6 +76,8 @@ export function ClientsDirectory({
   plans: Plan[];
   templates: { id: string; name: string }[];
   viewerRole: UserRole;
+  /** True for the inactive/expired tab: shows the WhatsApp renewal icon in ACTIONS. */
+  showRenewal?: boolean;
 }) {
   const { t } = useI18n();
   const [selected, setSelected] = useState<RowUser | null>(null);
@@ -245,6 +249,14 @@ export function ClientsDirectory({
                     </TableCell>
                     <TableCell className="text-end">
                       <div className="flex justify-end gap-1">
+                        {showRenewal && (
+                          <WhatsAppRenewalButton
+                            userId={u.id}
+                            fullName={u.full_name}
+                            endDate={sub?.end_date ?? null}
+                            variant="icon"
+                          />
+                        )}
                         <Button
                           asChild
                           size="icon"

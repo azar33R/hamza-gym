@@ -183,6 +183,7 @@ export default async function ClientsPage() {
             plans={(plans as Plan[]) ?? []}
             templates={(templates as { id: string; name: string }[]) ?? []}
             viewerRole={viewerRole}
+            showRenewal
           />
         </TabsContent>
 
