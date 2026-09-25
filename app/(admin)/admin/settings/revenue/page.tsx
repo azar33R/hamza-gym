@@ -56,43 +56,37 @@ export default async function RevenueAnalysisPage() {
         <DayPassDialog />
       </header>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* KPI cards — visible by default; the admin is already authenticated */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <MetricCard
           label={t("admin.revenue.total")}
           value={fmt(data.totals.totalRevenue)}
           icon={<DollarSign className="h-4 w-4" />}
-          revealable
         />
         <MetricCard
           label={t("admin.revenue.this_month")}
           value={fmt(data.totals.monthRevenue)}
           icon={<TrendingUp className="h-4 w-4" />}
-          revealable
         />
         <MetricCard
           label={t("admin.revenue.pending")}
           value={fmt(data.totals.pendingRevenue)}
           icon={<Clock className="h-4 w-4" />}
-          revealable
         />
         <MetricCard
           label={t("admin.revenue.day_pass_revenue")}
           value={fmt(data.totals.dayPassRevenue)}
           icon={<Ticket className="h-4 w-4" />}
-          revealable
         />
         <MetricCard
           label={t("admin.revenue.mrr")}
           value={fmt(data.totals.mrr)}
           icon={<Repeat className="h-4 w-4" />}
-          revealable
         />
         <MetricCard
           label={t("admin.revenue.future")}
           value={fmt(data.totals.futureRevenue)}
           icon={<CalendarClock className="h-4 w-4" />}
-          revealable
         />
       </div>
 

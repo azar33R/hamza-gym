@@ -12,6 +12,7 @@ import {
 } from "@/components/admin/expiring-table";
 import { AddMemberDialog } from "@/components/admin/add-member-dialog";
 import { requireStaffOrAdmin } from "@/lib/admin";
+import { isEffectivelyExpired as isMemberExpired, todayISODate } from "@/lib/membership";
 import { getT } from "@/lib/i18n/server";
 import type { Plan } from "@/lib/types";
 
@@ -75,14 +76,14 @@ export default async function ClientsPage() {
   // subscription end_date is before today is treated as expired, so it
   // shows (and counts) in the inactive tab immediately — no need to wait
   // for the member to log in and trigger the self-heal.
-  const todayStr = new Date().toISOString().split("T")[0];
-  const isEffectivelyExpired = (p: { id: string; subscription_status: string }) => {
-    if (p.subscription_status === "active") {
-      const end = latestSub.get(p.id)?.end_date ?? null;
-      if (end && end < todayStr) return true;
-    }
-    return p.subscription_status !== "active";
-  };
+  // Shared with the dashboard via lib/membership.ts so the two can't disagree.
+  const todayStr = todayISODate();
+  const isEffectivelyExpired = (p: { id: string; subscription_status: string }) =>
+    isMemberExpired(
+      p.subscription_status,
+      latestSub.get(p.id)?.end_date,
+      todayStr
+    );
 
   const activeRaw = (allSubs ?? []).filter(
     (p) => !isEffectivelyExpired(p as { id: string; subscription_status: string })

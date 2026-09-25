@@ -58,7 +58,7 @@ export default async function SubscriberLayout({
       needsPasswordSetup={profile?.force_password_setup ?? false}
     >
         <TabShellProvider>
-          <main className="mx-auto w-full max-w-3xl overflow-x-hidden px-4 py-6 pb-28">
+          <main className="mx-auto w-full max-w-md overflow-x-hidden px-4 py-6 pb-28">
             {children}
           </main>
           <BottomNav />

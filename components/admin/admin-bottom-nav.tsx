@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -40,7 +38,7 @@ export function AdminBottomNav({ role }: { role: UserRole }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 select-none"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 select-none md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="mx-auto flex max-w-3xl items-center justify-around px-1 py-1.5">

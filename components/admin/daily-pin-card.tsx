@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useOffline } from "@/lib/offline/context";
 import { useI18n } from "@/lib/i18n/client";
 
+// Compact single-row check-in PIN strip. The PIN is the hero element, but it
+// doesn't get a full-height gradient card to itself.
 export function DailyPinCard({ pin, updatedAt }: { pin: string; updatedAt: string }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -28,35 +30,38 @@ export function DailyPinCard({ pin, updatedAt }: { pin: string; updatedAt: strin
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/15 via-card to-card p-6">
-      <div className="flex items-center gap-2 text-primary">
+    <section className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-border bg-card px-4 py-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
         <KeyRound className="h-4 w-4" />
-        <h2 className="text-xs font-semibold uppercase tracking-wider">
-          {t("admin.pin.title")}
-        </h2>
-      </div>
+      </span>
 
-      <div className="mt-3 flex items-end gap-3">
-        <span className="font-mono text-7xl font-black leading-none tracking-tight text-zinc-50 sm:text-8xl" dir="ltr" style={{ unicodeBidi: "plaintext" }}>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold text-zinc-500">{t("admin.pin.title")}</p>
+        <p className="mt-0.5 font-mono text-4xl font-black leading-none tracking-tight text-zinc-50 tabular-nums">
           {pin}
-        </span>
+        </p>
       </div>
 
-      <p className="mt-2 text-xs text-zinc-400">
-        {t("admin.pin.description", {
-          time: new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        })}
-      </p>
-
-      <Button
-        onClick={regenerate}
-        disabled={pending || !isOnline}
-        variant="secondary"
-        className="mt-4 gap-2"
-      >
-        <RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} />
-        {pending ? t("admin.pin.generating") : t("admin.pin.generate")}
-      </Button>
+      <div className="flex items-center gap-3">
+        <p className="hidden max-w-[16rem] text-[11px] leading-snug text-zinc-500 sm:block">
+          {t("admin.pin.description", {
+            when: new Date(updatedAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          })}
+        </p>
+        <Button
+          onClick={regenerate}
+          disabled={pending || !isOnline}
+          variant="secondary"
+          size="sm"
+          className="shrink-0 gap-1.5"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${pending ? "animate-spin" : ""}`} />
+          {pending ? t("admin.pin.generating") : t("admin.pin.generate")}
+        </Button>
+      </div>
     </section>
   );
 }
