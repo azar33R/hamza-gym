@@ -38,15 +38,30 @@ function relativeTime(iso: string): string {
   });
 }
 
+// A DM notification stores the deep link "/chat/{senderId}". Staff viewing the
+// bell live under /admin, and the subscriber layout redirects them away from
+// /chat, so rewrite the prefix to the viewer's own chat base. Also handles older
+// rows stored as a bare "/chat".
+function resolveLink(n: Notification, isAdminViewer: boolean): string {
+  if (n.type === "dm") {
+    const rest = n.link?.startsWith("/chat") ? n.link.slice("/chat".length) : "";
+    const target = `${isAdminViewer ? "/admin/chat" : "/chat"}${rest}`;
+    return target || (isAdminViewer ? "/admin/chat" : "/chat");
+  }
+  return n.link ?? "/admin/triage";
+}
+
 // Bell + dropdown for the admin top bar. `initial` notifications and
 // `initialUnread` are passed from the server layout; the dropdown itself
 // refreshes the route every ~20s so the badge stays current without realtime.
 export function AdminNotificationBell({
   initial,
   initialUnread,
+  isAdminViewer = true,
 }: {
   initial: Notification[];
   initialUnread: number;
+  isAdminViewer?: boolean;
 }) {
   const router = useRouter();
   const { t } = useI18n();
@@ -79,7 +94,7 @@ export function AdminNotificationBell({
   }
 
   async function handleOpen(n: Notification) {
-    const link = n.link ?? "/admin/triage";
+    const link = resolveLink(n, isAdminViewer);
     startTransition(async () => {
       await markNotificationRead(n.id);
       setOpen(false);

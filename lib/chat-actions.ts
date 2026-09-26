@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/lib/supabase/server";
 import { sendPushToUser } from "@/lib/push";
+import { phoneMatchForms } from "@/lib/phone";
 import type { ChatMessage, Profile, UserRole } from "@/lib/types";
 
 export type ChatContact = {
@@ -96,7 +98,9 @@ export async function sendMessage(
       { title: senderName, body: trimmed || "📷 Photo" },
       "dm",
       null,
-      "/chat"
+      // Deep-link to THIS conversation. The recipient opens the thread with the
+      // sender, not the generic inbox.
+      `/chat/${senderId}`
     );
   } catch {
     // Push is best-effort — the message itself is already persisted.
@@ -151,17 +155,24 @@ export async function fetchThread(
   return { error: null, messages: (data as ChatMessage[]) ?? [] };
 }
 
-// Fetch the caller's inbox against a given set of counterpart roles — every
-// admin/staff for a subscriber, every subscriber for an admin/staff. Returns
-// one row per contact with their latest message + unread count, newest first.
-// Contacts with no messages yet are still listed (so the user can start one).
+// Fetch the caller's inbox against a given set of counterpart roles.
+// Returns one row per contact with their latest message + unread count, newest
+// first.
+//
+// `options.includeIdleSubscribers` controls whether subscribers you have NEVER
+// messaged appear in the list. It is OFF for members: a member may only see
+// staff/coaches plus people they already have a thread with. To reach another
+// member they must look them up by phone number (see findContactByPhone).
+// Staff/admins keep the full list so the coach can start a DM with anyone.
 export async function fetchInbox(
-  counterpartRoles: UserRole[]
+  counterpartRoles: UserRole[],
+  options: { includeIdleSubscribers?: boolean } = {}
 ): Promise<{ error: string | null; contacts: ChatContact[] }> {
   const userId = await currentUserId();
   if (!userId) return { error: "Not signed in.", contacts: [] };
 
   const supabase = serviceClient();
+  const includeIdle = options.includeIdleSubscribers ?? false;
 
   // 1) All counterpart profiles (every admin/staff the subscriber can talk to,
   //    or every subscriber the admin/staff can talk to).
@@ -233,5 +244,109 @@ export async function fetchInbox(
     return 0;
   });
 
-  return { error: null, contacts };
+  // Members don't get to browse the roster: drop counterpart MEMBERS they've
+  // never talked to. Staff keep them (the coach needs the full list).
+  const visible = includeIdle
+    ? contacts
+    : contacts.filter((c) => c.role !== "subscriber" || c.last_at !== null);
+
+  return { error: null, contacts: visible };
+}
+
+// Resolve a typed phone number to a gym member so the caller can start a DM.
+// This is the ONLY way a member may reach another member — the roster is not
+// browsable. Returns a minimal contact (no phone echoed back) plus a short-lived
+// signed `grant`, because opening the thread requires proving the conversation
+// was started deliberately by phone lookup rather than by guessing a URL.
+export async function findContactByPhone(
+  rawPhone: string
+): Promise<{
+  error: string | null;
+  contact: ChatContact | null;
+  grant: string | null;
+}> {
+  const userId = await currentUserId();
+  if (!userId) return { error: "Not signed in.", contact: null, grant: null };
+
+  // profiles.phone mirrors auth.users.phone, which Supabase stores WITHOUT the
+  // leading "+" ("201006857031") while normalizeEGPhone returns "+201006857031".
+  // Match both spellings so either storage convention resolves.
+  const forms = phoneMatchForms(rawPhone);
+  if (forms.length === 0) return { error: "invalid_phone", contact: null, grant: null };
+
+  const supabase = serviceClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name, face_photo_url, role")
+    .in("phone", forms)
+    .limit(1);
+
+  const p = (data?.[0] ?? null) as
+    | (Pick<Profile, "id" | "full_name" | "face_photo_url"> & { role: UserRole })
+    | null;
+
+  if (!p) return { error: "not_found", contact: null, grant: null };
+  if (p.id === userId) return { error: "self", contact: null, grant: null };
+
+  return {
+    error: null,
+    grant: createThreadGrant(userId, p.id),
+    contact: {
+      id: p.id,
+      full_name: p.full_name,
+      face_photo_url: p.face_photo_url ?? null,
+      role: p.role,
+      last_message: null,
+      last_at: null,
+      unread: 0,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+//  Thread grants
+//
+//  A member may only open a thread with another member if it already exists, or
+//  if they arrived via phone lookup. "Arrived via phone lookup" is proven with a
+//  short-lived HMAC over (callerId, otherId, expiry) — the browser can't forge
+//  it, and the thread page only honours it for the exact pair it was issued for.
+// ---------------------------------------------------------------------------
+const GRANT_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function grantSecret(): string {
+  // Server-only env var; never reaches the client bundle.
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || "dev-insecure-grant-secret";
+}
+
+function sign(payload: string): string {
+  return createHmac("sha256", grantSecret()).update(payload).digest("base64url");
+}
+
+function createThreadGrant(meId: string, otherId: string): string {
+  const payload = `${meId}.${otherId}.${Date.now() + GRANT_TTL_MS}`;
+  return `${Buffer.from(payload).toString("base64url")}.${sign(payload)}`;
+}
+
+export async function verifyThreadGrant(
+  token: string | undefined,
+  meId: string,
+  otherId: string
+): Promise<boolean> {
+  if (!token) return false;
+  const dot = token.lastIndexOf(".");
+  if (dot <= 0) return false;
+
+  const payload = Buffer.from(token.slice(0, dot), "base64url").toString();
+  const mac = token.slice(dot + 1);
+
+  const expected = sign(payload);
+  const a = Buffer.from(mac);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return false;
+
+  const [caller, target, exp] = payload.split(".");
+  if (caller !== meId || target !== otherId) return false;
+  if (!exp || Number(exp) < Date.now()) return false;
+
+  return true;
 }

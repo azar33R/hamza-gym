@@ -13,6 +13,7 @@ import {
   Wrench,
   Megaphone,
   BarChart3,
+  MessageCircle,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ type Item = {
 const MAIN: Item[] = [
   { href: "/admin", labelKey: "nav.home", icon: LayoutDashboard, exact: true },
   { href: "/admin/triage", labelKey: "nav.triage", icon: AlertTriangle },
+  { href: "/admin/chat", labelKey: "nav.chat", icon: MessageCircle },
   { href: "/admin/clients", labelKey: "nav.clients", icon: Users },
   { href: "/admin/workouts", labelKey: "nav.workouts", icon: Dumbbell },
 ];

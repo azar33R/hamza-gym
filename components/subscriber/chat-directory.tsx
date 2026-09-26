@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/client";
-import { MessageCircle, Users, Shield } from "lucide-react";
+import { MessageCircle, Users, Shield, PhoneCall } from "lucide-react";
 import {
   Tabs,
   TabsContent,
@@ -11,15 +11,20 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ChatInbox } from "@/components/subscriber/chat-inbox";
+import { PhoneLookup } from "@/components/subscriber/chat-phone-lookup";
 import type { ChatContact } from "@/lib/chat-actions";
 import { useOffline } from "@/lib/offline/context";
 
 export function ChatDirectory({
   contacts,
-  isMember,
+  canBrowseMembers,
+  basePath = "/chat",
 }: {
   contacts: ChatContact[];
-  isMember: boolean;
+  /** Staff/admin only — members can't browse the roster, they use phone lookup. */
+  canBrowseMembers?: boolean;
+  /** Route prefix for thread links — "/chat" for members, "/admin/chat" for staff. */
+  basePath?: string;
 }) {
   const router = useRouter();
   const { t } = useI18n();
@@ -47,7 +52,8 @@ export function ChatDirectory({
 
   const tabs = [
     { value: "chats", label: t("chat.tabs.chats"), icon: MessageCircle, count: currentChats.length },
-    ...(isMember
+    { value: "lookup", label: t("chat.tabs.lookup"), icon: PhoneCall, count: 0 },
+    ...(canBrowseMembers
       ? [{ value: "members", label: t("chat.tabs.members"), icon: Users, count: members.length }]
       : []),
     { value: "staff", label: t("chat.tabs.staff"), icon: Shield, count: staff.length },
@@ -94,18 +100,22 @@ export function ChatDirectory({
               {t("chat.no_conversations")}
             </div>
           ) : (
-            <ChatInbox contacts={currentChats} basePath="/chat" />
+            <ChatInbox contacts={currentChats} basePath={basePath} />
           )}
         </TabsContent>
 
-        {isMember && (
+        <TabsContent value="lookup" className="mt-4">
+          <PhoneLookup basePath={basePath} />
+        </TabsContent>
+
+        {canBrowseMembers && (
           <TabsContent value="members" className="mt-4 space-y-3">
-            <ChatInbox contacts={members} basePath="/chat" />
+            <ChatInbox contacts={members} basePath={basePath} />
           </TabsContent>
         )}
 
         <TabsContent value="staff" className="mt-4 space-y-3">
-          <ChatInbox contacts={staff} basePath="/chat" />
+          <ChatInbox contacts={staff} basePath={basePath} />
         </TabsContent>
       </Tabs>
     </div>

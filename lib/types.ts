@@ -39,6 +39,9 @@ export type Profile = {
   // Phase 4 additions:
   age?: number | null;
   face_photo_url?: string | null;
+  // Normalized E.164 phone (+20…), mirrors auth.users.phone (see migration
+  // 0041). Used to resolve "message by phone number".
+  phone?: string | null;
   workout_path?: WorkoutPath | null;
   onboarded?: boolean | null;
   // Points economy (was total_xp). A SINGLE spendable balance: earning raises

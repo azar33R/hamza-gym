@@ -33,3 +33,13 @@ export function normalizeEGPhone(input: string): string | null {
 
   return "+20" + s;
 }
+
+// Supabase stores auth.users.phone WITHOUT the leading "+" (e.g.
+// "201006857031"), while normalizeEGPhone returns "+201006857031". Anything
+// comparing against the profiles.phone column must try both spellings, so this
+// returns every equivalent form for a valid Egyptian number.
+export function phoneMatchForms(input: string): string[] {
+  const e164 = normalizeEGPhone(input);
+  if (!e164) return [];
+  return [e164, e164.slice(1)];
+}
