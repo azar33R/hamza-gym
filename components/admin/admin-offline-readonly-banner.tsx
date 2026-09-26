@@ -27,7 +27,7 @@ export function AdminOfflineReadonlyBanner() {
         </p>
         {staleLabel && (
           <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-200/60">
-            <Clock className="h-3 w-3" /> {t("admin.offline.stale_data", { stale: staleLabel })}
+            <Clock className="h-3 w-3" /> {t("admin.offline.stale_data", { when: staleLabel })}
           </p>
         )}
       </div>

@@ -54,7 +54,7 @@ export function BroadcastForm({
       } else {
         toast.success(
           res.delivered > 0
-            ? t("admin.broadcast.sent_with_devices", { count: res.recipients, delivered: res.delivered })
+            ? t("admin.broadcast.sent_with_devices", { n: res.recipients, delivered: res.delivered })
             : t("admin.broadcast.sent", { count: res.recipients })
         );
         setTitle("");

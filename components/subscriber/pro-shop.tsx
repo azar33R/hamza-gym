@@ -273,7 +273,7 @@ export function ProShop({
                   {product.stock != null && (
                     <p className="text-xs text-zinc-500">
                       {product.stock > 0
-                        ? t("shop.in_stock", { count: product.stock })
+                        ? t("shop.in_stock", { n: product.stock })
                         : t("shop.out_of_stock")}
                     </p>
                   )}

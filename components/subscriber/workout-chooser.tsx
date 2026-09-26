@@ -446,7 +446,7 @@ function PlanCard({
             <p className="mt-0.5 text-sm text-zinc-400">{description}</p>
           )}
           <p className="mt-1 text-xs text-zinc-500">
-            {t("workout.exercise_summary", { count: exercises.length, sets: totalSets })}
+            {t("workout.exercise_summary", { n: exercises.length, sets: totalSets })}
           </p>
         </div>
       </div>

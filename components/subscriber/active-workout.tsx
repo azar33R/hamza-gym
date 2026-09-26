@@ -205,8 +205,10 @@ export function ActiveWorkout({
         <div className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-lg font-semibold text-zinc-50">{templateName}</h2>
           <p className="mt-1 text-sm text-zinc-400">
-            {t("workout.exercise_count", { count: exercises.length })} ·{" "}
-            {t("workout.sets_total", { count: exercises.reduce((s, e) => s + e.sets, 0) })}
+            {t("workout.exercise_count", {
+              n: exercises.length,
+              sets: exercises.reduce((sum, e) => sum + e.sets, 0),
+            })}
           </p>
           <ul className="mt-4 space-y-2">
             {exercises.map((e, i) => (

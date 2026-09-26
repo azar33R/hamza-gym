@@ -101,7 +101,7 @@
   "admin.mrr": "MRR",
   "admin.new_signups": "New Sign-ups",
   "admin.offline.banner": "Offline — read only",
-  "admin.offline.readonly": "You can review this data, but actions (approve, nudge, broadcast, activate, delete) need a connection. They're disabled for now.",
+  "admin.offline.readonly": "You can review this data. Actions (approve, nudge, broadcast, activate, delete) need a connection and are disabled for now. Adding a new member works offline and syncs when you're back online.",
   "admin.offline.stale_data": "Showing data from {when}",
   "admin.outstanding": "Outstanding",
   "admin.outstanding_hint": "{expired} expired · {pending} awaiting approval",

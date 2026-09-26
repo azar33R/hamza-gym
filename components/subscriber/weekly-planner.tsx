@@ -97,7 +97,7 @@ export function WeeklyPlanner({
         <p className="mt-1 text-xs text-zinc-400">
           {t("workout.weekly_split_desc")}{" "}
           {totalAssigned > 0
-            ? t("workout.days_set", { count: totalAssigned })
+            ? t("workout.days_set", { n: totalAssigned })
             : t("workout.no_days_set")}
         </p>
 
@@ -210,7 +210,7 @@ function TodayCard({
       </p>
       <h3 className="mt-0.5 font-semibold text-zinc-50">{today.name}</h3>
       <p className="mt-0.5 text-xs text-zinc-400">
-        {t("workout.exercise_sets_summary", { count: today.exercises.length, sets: totalSets })}
+        {t("workout.exercise_sets_summary", { n: today.exercises.length, sets: totalSets })}
       </p>
     </div>
   );

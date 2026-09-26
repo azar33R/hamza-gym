@@ -234,7 +234,7 @@ export function RestTimer({
           onClick={beginRest}
           className="mt-8 gap-2 px-8"
         >
-          <Play className="h-4 w-4" /> {t("workout.start_rest", { duration })}
+          <Play className="h-4 w-4" /> {t("workout.start_rest", { n: duration })}
         </Button>
 
         <Button

@@ -91,7 +91,7 @@ export function CrowdMeter({ activeCount }: { activeCount: number }) {
         <span className="text-xs font-semibold text-zinc-100">{s.label}</span>
       ) : (
         <span className="text-xs text-zinc-500">
-          {staleLabel ? t("crowd.updated", { time: staleLabel }) : t("crowd.offline")}
+          {staleLabel ? t("crowd.updated", { when: staleLabel }) : t("crowd.offline")}
         </span>
       )}
     </div>
