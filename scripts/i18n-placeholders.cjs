@@ -55,8 +55,11 @@ function splitTopLevel(src) {
       continue;
     }
     if (ch === '"' || ch === "'" || ch === "`") { inStr = ch; buf += ch; continue; }
+    // NOTE: closers must include ")" as well as "]" and "}", otherwise a call
+    // site like t("k", { n: Math.floor(x), d: y }) never returns to depth 0
+    // and the argument object is mis-parsed as a single entry.
     if ("{[(".includes(ch)) depth++;
-    else if ("]}".includes(ch)) depth--;
+    else if (")]})".includes(ch)) depth--;
     if (ch === "," && depth === 0) { out.push(buf); buf = ""; continue; }
     buf += ch;
   }

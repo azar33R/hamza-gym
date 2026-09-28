@@ -13,7 +13,8 @@ export type PlanType =
   | "1-month"
   | "3-month"
   | "6-month"
-  | "1-year";
+  | "1-year"
+  | "custom";
 
 export type PaymentMethod = "vodafone_cash" | "manual_coach";
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient as createSSRClient } from "@/lib/supabase/server";
 import { requireAdmin, requireStaffOrAdmin } from "@/lib/admin";
+import { planMonthlyValue } from "@/lib/plans";
 import type { ManualRevenue, PlanType } from "@/lib/types";
 
 // Server-only client (service role) — bypasses RLS so staff + admin can read
@@ -100,13 +101,18 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
   // Plans for pricing + labels.
   const { data: plans } = await supabase
     .from("plans")
-    .select("plan_type, label, price_egp, duration_months");
-  const planMap = new Map<string, { label: string; price: number; durationMonths: number }>();
+    .select("plan_type, label, price_egp, duration_months, duration_days");
+  const planMap = new Map<
+    string,
+    { label: string; price: number; durationMonths: number; durationDays: number | null }
+  >();
   for (const p of plans ?? []) {
     planMap.set(p.plan_type as string, {
       label: p.label,
       price: Number(p.price_egp) || 0,
       durationMonths: Number(p.duration_months) || 0,
+      durationDays:
+        p.duration_days == null ? null : Number(p.duration_days) || null,
     });
   }
 
@@ -264,9 +270,13 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
     } else if (end && end >= todayKey) {
       // Currently covered by a membership.
       breakdown.active += 1;
-      if (s.plan_type !== "1-day" && plan && plan.durationMonths > 0) {
-        mrr += price / plan.durationMonths;
-      }
+      // Monthly-normalized so custom-length plans (e.g. 15 days) still count
+      // toward MRR. A 1-day pass is a drop-in and contributes 0.
+      mrr += planMonthlyValue({
+        price_egp: plan?.price ?? 0,
+        duration_months: plan?.durationMonths ?? 0,
+        duration_days: plan?.durationDays ?? null,
+      });
     } else {
       breakdown.expired += 1;
     }

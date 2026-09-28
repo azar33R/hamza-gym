@@ -33,7 +33,21 @@ const PLAN_TYPES: { value: PlanType; label: string }[] = [
   { value: "3-month", label: "3-Month" },
   { value: "6-month", label: "6-Month" },
   { value: "1-year", label: "1-Year" },
+  { value: "custom", label: "Custom" },
 ];
+
+// "custom" is driven by an explicit day count rather than whole months.
+function isDayBased(type: PlanType): boolean {
+  return type === "custom";
+}
+
+// Mirror of the SQL in 0042: days granted, inclusive of the start day.
+function previewEndDate(days: number | null): Date | null {
+  if (!days || days < 1) return null;
+  const d = new Date();
+  d.setDate(d.getDate() + (days - 1));
+  return d;
+}
 
 export function PlanEditor({
   trigger,
@@ -51,6 +65,7 @@ export function PlanEditor({
   const [price, setPrice] = useState(String(plan?.price_egp ?? ""));
   const [cardioPrice, setCardioPrice] = useState(String(plan?.cardio_price ?? ""));
   const [duration, setDuration] = useState(String(plan?.duration_months ?? "1"));
+  const [days, setDays] = useState(String(plan?.duration_days ?? ""));
   const [features, setFeatures] = useState<string[]>(plan?.features ?? [""]);
   const [isActive, setIsActive] = useState(plan?.is_active ?? true);
   const [sortOrder, setSortOrder] = useState(String(plan?.sort_order ?? "0"));
@@ -65,6 +80,11 @@ export function PlanEditor({
     setFeatures((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  const dayBased = isDayBased(planType);
+  const parsedDays = Number(days);
+  const validDays = dayBased && Number.isFinite(parsedDays) && parsedDays >= 1;
+  const endPreview = validDays ? previewEndDate(parsedDays) : null;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
@@ -73,7 +93,9 @@ export function PlanEditor({
         label,
         price_egp: Number(price) || 0,
         cardio_price: Number(cardioPrice) || 0,
-        duration_months: Number(duration) || 0,
+        duration_months: dayBased ? 0 : Number(duration) || 0,
+        // null (not 0) so a day-based plan is unambiguous and passes the CHECK.
+        duration_days: validDays ? Math.floor(parsedDays) : null,
         features: features.filter((f) => f.trim()),
         is_active: isActive,
         sort_order: Number(sortOrder) || 0,
@@ -146,15 +168,34 @@ export function PlanEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="p-duration">{t("admin.plans.duration")}</Label>
+              <Label htmlFor="p-duration">
+                {dayBased ? t("admin.plans.duration_days") : t("admin.plans.duration")}
+              </Label>
               <Input
                 id="p-duration"
                 type="number"
-                min={0}
-                required
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
+                min={dayBased ? undefined : 0}
+                step={dayBased ? 1 : undefined}
+                required={!dayBased}
+                placeholder={dayBased ? t("admin.plans.duration_days_ph") : undefined}
+                value={dayBased ? days : duration}
+                onChange={(e) =>
+                  dayBased ? setDays(e.target.value) : setDuration(e.target.value)
+                }
               />
+              {dayBased && (
+                <p className="text-[11px] leading-snug text-zinc-500">
+                  {t("admin.plans.duration_days_hint")}
+                </p>
+              )}
+              {endPreview && (
+                <p className="text-[11px] font-medium text-primary">
+                  {t("admin.plans.duration_preview", {
+                    days: Math.floor(parsedDays),
+                    date: endPreview.toLocaleDateString(),
+                  })}
+                </p>
+              )}
             </div>
           </div>
 

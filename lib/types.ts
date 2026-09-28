@@ -81,7 +81,10 @@ export type Plan = {
   label: string;
   price_egp: number;
   cardio_price: number;
-  duration_months: number; // 0 = 1-day pass
+  duration_months: number; // 0 = 1-day pass (ignored when duration_days is set)
+  // Days of access granted, inclusive of the start day. When set, this wins over
+  // duration_months — lets the coach sell e.g. a 15-day or 45-day membership.
+  duration_days?: number | null;
   features: string[];
   is_active: boolean;
   sort_order: number;

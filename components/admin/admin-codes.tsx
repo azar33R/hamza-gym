@@ -40,6 +40,7 @@ const PLAN_TYPES: PlanType[] = [
   "3-month",
   "6-month",
   "1-year",
+  "custom",
 ];
 
 function planLabel(plans: Plan[], type: PlanType): string {

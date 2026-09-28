@@ -19,6 +19,7 @@ const VALID_PLAN_TYPES: PlanType[] = [
   "3-month",
   "6-month",
   "1-year",
+  "custom",
 ];
 
 export async function upsertPlan(
@@ -29,6 +30,8 @@ export async function upsertPlan(
     price_egp: number;
     cardio_price: number;
     duration_months: number;
+    /** Days granted, inclusive of the start day. Overrides duration_months. */
+    duration_days?: number | null;
     features: string[];
     is_active: boolean;
     sort_order: number;
@@ -41,6 +44,9 @@ export async function upsertPlan(
   }
   if (!data.label.trim()) return { error: "Label is required." };
   if (data.duration_months < 0) return { error: "Duration must be ≥ 0." };
+  if (data.duration_days != null && data.duration_days < 1) {
+    return { error: "Days must be at least 1." };
+  }
 
   const supabase = serviceClient();
   const payload = {
@@ -49,6 +55,7 @@ export async function upsertPlan(
     price_egp: data.price_egp,
     cardio_price: data.cardio_price,
     duration_months: data.duration_months,
+    duration_days: data.duration_days ?? null,
     features: data.features,
     is_active: data.is_active,
     sort_order: data.sort_order,

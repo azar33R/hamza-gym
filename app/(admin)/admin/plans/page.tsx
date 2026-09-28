@@ -49,7 +49,9 @@ export default async function PlansPage() {
                     <span className="text-sm font-normal text-zinc-400">{t("common.egp")}</span>
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {p.duration_months === 0
+                    {p.duration_days
+                      ? t("plans.n_days", { n: p.duration_days })
+                      : p.duration_months === 0
                       ? t("plans.one_day_pass")
                       : p.duration_months === 1
                       ? t("plans.1_month", { n: p.duration_months })
