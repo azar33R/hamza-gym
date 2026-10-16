@@ -3,17 +3,10 @@
 import { useEffect, useState, useTransition } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { toast } from "sonner";
-import { Copy, Check, UserPlus, CloudUpload, HandCoins } from "lucide-react";
+import { Copy, Check, UserPlus, CloudUpload, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +20,7 @@ import { queueCreateMember } from "@/lib/offline";
 import { useOffline } from "@/lib/offline/context";
 import { LivePhotoCapture } from "@/components/admin/live-photo-capture";
 import type { Plan } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   plans: Plan[];
@@ -52,6 +46,10 @@ export function AddMemberDialog({ plans }: Props) {
   const [queuedOffline, setQueuedOffline] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Optional vitals are collapsed by default — most members never fill them in.
+  const [showMore, setShowMore] = useState(false);
+  // The compact photo tile asks us to go full-width while the camera is live.
+  const [cameraOpen, setCameraOpen] = useState(false);
   // Partial cash payment: checked = the member paid only part of the plan
   // price now and promises the rest later.
   const [isPartial, setIsPartial] = useState(false);
@@ -62,9 +60,29 @@ export function AddMemberDialog({ plans }: Props) {
   // reminder_every_days (null = off, otherwise 7 or 15).
   const [autoRemind, setAutoRemind] = useState(true);
   const [remindEvery, setRemindEvery] = useState<7 | 15>(7);
+  // Cardio add-on — only offered when the chosen plan prices one.
+  const [cardio, setCardio] = useState(false);
 
   const selectedPlan = plans.find((p) => p.plan_type === plan) ?? null;
   const planPrice = selectedPlan ? Number(selectedPlan.price_egp) : 0;
+  const cardioPrice = selectedPlan ? Number(selectedPlan.cardio_price) || 0 : 0;
+  const cardioAddon = cardio && cardioPrice > 0 ? cardioPrice : 0;
+  // Everything owed (and validated against) is the TOTAL: plan + cardio.
+  const totalPrice = planPrice + cardioAddon;
+
+  // Human duration for the plan cards ("30 days", "3 months", "1-day pass").
+  function planDuration(p: Plan) {
+    if (p.duration_days && p.duration_days > 0) {
+      return t("plans.n_days", { n: p.duration_days });
+    }
+    if (p.duration_months > 1) {
+      return t("plans.n_months", { n: p.duration_months });
+    }
+    if (p.duration_months === 1) {
+      return t("plans.1_month", { n: 1 });
+    }
+    return t("plans.one_day_pass");
+  }
 
   // Due date defaults to 7 days after the start date. It fills in the moment
   // partial is switched on (or the start date changes) until the coach edits
@@ -82,13 +100,16 @@ export function AddMemberDialog({ plans }: Props) {
   useEffect(() => {
     if (!plan) {
       setIsPartial(false);
+      setCardio(false);
+    } else if (cardioPrice <= 0) {
+      setCardio(false);
     }
-  }, [plan]);
+  }, [plan, cardioPrice]);
   const paidAmount = Math.floor(Number(paidNow));
   const partialValid =
     !isPartial ||
-    (Number.isFinite(paidAmount) && paidAmount > 0 && paidAmount < planPrice);
-  const remaining = isPartial && partialValid ? planPrice - paidAmount : 0;
+    (Number.isFinite(paidAmount) && paidAmount > 0 && paidAmount < totalPrice);
+  const remaining = isPartial && partialValid ? totalPrice - paidAmount : 0;
 
   function reset() {
     setFullName("");
@@ -104,12 +125,15 @@ export function AddMemberDialog({ plans }: Props) {
     setGeneratedCode(null);
     setQueuedOffline(false);
     setCopied(false);
+    setShowMore(false);
+    setCameraOpen(false);
     setIsPartial(false);
     setPaidNow("");
     setDueDate("");
     setDueTouched(false);
     setAutoRemind(true);
     setRemindEvery(7);
+    setCardio(false);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -133,6 +157,8 @@ export function AddMemberDialog({ plans }: Props) {
       age: age ? Number(age) : null,
       heightCm: height ? Number(height) : null,
       weightKg: weight ? Number(weight) : null,
+      cardio: cardioAddon > 0,
+      cardioPriceSnapshot: cardioAddon > 0 ? cardioAddon : null,
       partialPayment: isPartial
         ? {
             paidNow: paidAmount,
@@ -140,7 +166,7 @@ export function AddMemberDialog({ plans }: Props) {
             reminderEveryDays: autoRemind ? remindEvery : null,
           }
         : null,
-      priceSnapshot: planPrice || null,
+      priceSnapshot: totalPrice || null,
     };
 
     // Offline: save the form + live photo locally and queue them for replay
@@ -193,25 +219,35 @@ export function AddMemberDialog({ plans }: Props) {
           {t("admin.members.add")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+
+      {/* Fixed header / scrolling body / pinned footer. */}
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <DialogHeader className="shrink-0 border-b border-border p-5 pe-14 text-start">
           <DialogTitle>{t("admin.members.title")}</DialogTitle>
           <DialogDescription>{t("admin.members.desc")}</DialogDescription>
         </DialogHeader>
 
         {queuedOffline ? (
-          <div className="space-y-4 text-center">
+          <div className="flex-1 space-y-4 p-6 text-center">
             <CloudUpload className="mx-auto h-10 w-10 text-primary" />
             <p className="text-sm text-zinc-300">
               {t("admin.members.queued_offline")}
             </p>
-            <p className="text-xs text-zinc-500">{t("admin.members.queued_offline_hint")}</p>
-            <Button className="w-full" onClick={() => { setOpen(false); reset(); }}>
+            <p className="text-xs text-zinc-500">
+              {t("admin.members.queued_offline_hint")}
+            </p>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setOpen(false);
+                reset();
+              }}
+            >
               {t("common.done")}
             </Button>
           </div>
         ) : generatedCode ? (
-          <div className="space-y-4 text-center">
+          <div className="flex-1 space-y-4 p-6 text-center">
             <p className="text-sm text-zinc-400">{t("admin.members.give_code")}</p>
             <div className="flex items-center justify-center gap-3">
               <span className="rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 font-mono text-2xl font-bold tracking-widest text-primary">
@@ -230,271 +266,452 @@ export function AddMemberDialog({ plans }: Props) {
                 )}
               </Button>
             </div>
-            <Button className="w-full" onClick={() => { setOpen(false); reset(); }}>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setOpen(false);
+                reset();
+              }}
+            >
               {t("common.done")}
             </Button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="m-name">{t("admin.members.full_name")}</Label>
-              <Input
-                id="m-name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("admin.members.photo")}</Label>
-              <LivePhotoCapture
-                value={photoDataUrl}
-                onCapture={(dataUrl) => setPhotoDataUrl(dataUrl)}
-                onClear={() => setPhotoDataUrl(null)}
-                takeLabel={t("admin.members.take_photo")}
-                captureLabel={t("admin.members.capture")}
-                retakeLabel={t("admin.members.retake_photo")}
-                removeLabel={t("admin.members.remove_photo")}
-                startingLabel={t("admin.members.camera_starting")}
-                deniedLabel={t("admin.members.camera_denied")}
-                galleryLabel={t("admin.members.choose_gallery")}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="m-phone">{t("admin.members.phone")}</Label>
-              <div className="flex items-center gap-2">
-                <span className="flex h-10 items-center rounded-md border border-input bg-zinc-900 px-3 text-sm font-medium text-zinc-300">
-                  +20
-                </span>
-                <Input
-                  id="m-phone"
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="01006857031"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="flex-1"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="m-email">{t("admin.members.email")}</Label>
-              <Input
-                id="m-email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="m-gender">{t("admin.members.gender")}</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger id="m-gender">
-                  <SelectValue placeholder={t("admin.members.select_gender")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">{t("admin.members.gender_male")}</SelectItem>
-                  <SelectItem value="female">{t("admin.members.gender_female")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("admin.members.plan")}</Label>
-              <Select value={plan} onValueChange={setPlan}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("admin.members.select_plan")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans.map((p) => (
-                    <SelectItem key={p.id} value={p.plan_type}>
-                      {p.label} — {p.price_egp} EGP
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {plan ? (
-              <button
-                type="button"
-                onClick={() => setIsPartial((v) => !v)}
-                aria-pressed={isPartial}
-                className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-start transition-colors ${
-                  isPartial
-                    ? "border-primary bg-primary/10"
-                    : "border-dashed border-zinc-700 bg-zinc-950/40 hover:border-primary/50"
-                }`}
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+              {/* Identity: photo tile beside name + phone. Goes full-width
+                  while the camera is open so the live preview has room. */}
+              <div
+                className={cn(
+                  "flex gap-4",
+                  cameraOpen ? "flex-col" : "items-start"
+                )}
               >
-                <span
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
-                    isPartial ? "bg-primary text-black" : "bg-zinc-800 text-primary"
-                  }`}
-                >
-                  <HandCoins className="h-5 w-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-zinc-50">
-                    {t("admin.members.partial_box_title")}
-                  </span>
-                  <span className="block text-xs text-zinc-400">
-                    {t("admin.members.partial_box_desc")}
-                  </span>
-                </span>
-                <span
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-                    isPartial ? "bg-primary" : "bg-zinc-700"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
-                      isPartial ? "" : ""
-                    }`}
-                    style={
-                      isPartial
-                        ? { insetInlineEnd: "2px" }
-                        : { insetInlineStart: "2px" }
-                    }
-                  />
-                </span>
-              </button>
-            ) : null}
-            {plan && isPartial ? (
-              <div className="space-y-3 rounded-xl border-2 border-primary/50 bg-primary/5 p-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-paid" className="text-sm font-bold">
-                    {t("admin.members.paid_now")}
-                  </Label>
-                  <Input
-                    id="m-paid"
-                    type="number"
-                    min={1}
-                    max={planPrice > 0 ? planPrice - 1 : undefined}
-                    placeholder="200"
-                    value={paidNow}
-                    onChange={(e) => setPaidNow(e.target.value)}
-                    className="h-12 text-lg font-bold"
+                <div className={cn(cameraOpen ? "w-full" : "w-[88px] shrink-0")}>
+                  <LivePhotoCapture
+                    compact
+                    onExpandChange={setCameraOpen}
+                    value={photoDataUrl}
+                    onCapture={(dataUrl) => setPhotoDataUrl(dataUrl)}
+                    onClear={() => setPhotoDataUrl(null)}
+                    takeLabel={t("admin.members.take_photo")}
+                    captureLabel={t("admin.members.capture")}
+                    retakeLabel={t("admin.members.retake_photo")}
+                    removeLabel={t("admin.members.remove_photo")}
+                    startingLabel={t("admin.members.camera_starting")}
+                    deniedLabel={t("admin.members.camera_denied")}
+                    galleryLabel={t("admin.members.choose_gallery")}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-due" className="text-sm font-bold">
-                    {t("admin.members.due_date")}
-                  </Label>
-                  <Input
-                    id="m-due"
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => {
-                      setDueDate(e.target.value);
-                      setDueTouched(true);
-                    }}
-                    className="h-12 text-base"
-                  />
-                  <p className="text-[11px] text-zinc-500">
-                    {t("admin.members.due_auto_hint")}
-                  </p>
-                </div>
-                <p
-                  className={`rounded-lg px-3 py-2.5 text-sm font-bold ${
-                    partialValid && planPrice > 0
-                      ? "bg-zinc-900 text-zinc-100"
-                      : "bg-red-950/60 text-red-300"
-                  }`}
-                >
-                  {partialValid && planPrice > 0 ? (
-                    <>
-                      {t("admin.members.remaining")}:{" "}
-                      <span className="text-lg text-primary">
-                        {remaining} {t("common.egp")}
+
+                <div className="min-w-0 flex-1 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="m-name">
+                      {t("admin.members.full_name")}{" "}
+                      <span className="text-primary">*</span>
+                    </Label>
+                    <Input
+                      id="m-name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      autoComplete="name"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="m-phone">{t("admin.members.phone")}</Label>
+                    {/* +20 prefix lives inside the field so it reads as one control. */}
+                    <div className="flex h-11 items-center rounded-md border border-border bg-zinc-950/50 transition-colors focus-within:ring-2 focus-within:ring-ring">
+                      <span className="flex h-full items-center border-e border-border px-3 text-sm font-semibold text-zinc-400">
+                        +20
                       </span>
-                    </>
-                  ) : (
-                    t("admin.members.partial_invalid")
-                  )}
-                </p>
-                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                      <input
+                        id="m-phone"
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        placeholder="01006857031"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="h-full min-w-0 flex-1 bg-transparent px-3 text-base text-zinc-50 outline-none placeholder:text-muted-foreground"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email + gender */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="m-email">{t("admin.members.email")}</Label>
+                  <Input
+                    id="m-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t("admin.members.gender")}</Label>
+                  <div className="flex h-11 gap-1 rounded-md border border-border bg-zinc-950/50 p-1">
+                    {(["male", "female"] as const).map((g) => {
+                      const active = gender === g;
+                      return (
+                        <button
+                          key={g}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => setGender(active ? "" : g)}
+                          className={cn(
+                            "flex-1 rounded text-sm font-semibold transition-colors",
+                            active
+                              ? "bg-primary text-primary-foreground"
+                              : "text-zinc-400 hover:text-zinc-100"
+                          )}
+                        >
+                          {t(
+                            g === "male"
+                              ? "admin.members.gender_male"
+                              : "admin.members.gender_female"
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan picker */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                  {t("admin.members.plan")}
+                </span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
+              {plans.length > 0 ? (
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {plans.map((p) => {
+                    const active = plan === p.plan_type;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setPlan(active ? "" : p.plan_type)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-xl border-2 p-3.5 text-start transition-colors",
+                          active
+                            ? "border-primary bg-primary/10"
+                            : "border-border bg-zinc-950/40 hover:border-primary/50"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border-2",
+                            active ? "border-primary" : "border-zinc-600"
+                          )}
+                        >
+                          {active ? (
+                            <span className="h-2 w-2 rounded-full bg-primary" />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold text-zinc-50">
+                            {p.label}
+                          </span>
+                          <span className="block text-[11px] text-zinc-500">
+                            {planDuration(p)}
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 text-sm font-bold",
+                            active ? "text-primary" : "text-zinc-400"
+                          )}
+                        >
+                          {p.price_egp} {t("common.egp")}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-500">{t("admin.members.select_plan")}</p>
+              )}
+
+              {/* Cardio add-on — only when the chosen plan prices one. */}
+              {selectedPlan && cardioPrice > 0 ? (
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-zinc-950/40 px-4 py-3 transition-colors hover:border-primary/50">
                   <input
                     type="checkbox"
-                    checked={autoRemind}
-                    onChange={(e) => setAutoRemind(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-lime-500"
+                    checked={cardio}
+                    onChange={(e) => setCardio(e.target.checked)}
+                    className="h-4 w-4 shrink-0 accent-lime-500"
+                  />
+                  <span className="min-w-0 flex-1 text-sm font-semibold text-zinc-100">
+                    {t("billing.add_cardio", { price: cardioPrice })}
+                  </span>
+                  {cardio ? (
+                    <span className="shrink-0 text-xs font-bold text-primary">
+                      +{cardioPrice} {t("common.egp")}
+                    </span>
+                  ) : null}
+                </label>
+              ) : null}
+
+              {/* Partial payment */}
+              {plan ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsPartial((v) => !v)}
+                    aria-pressed={isPartial}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl border p-3 text-start transition-colors",
+                      isPartial
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-zinc-950/40 hover:border-primary/50"
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold text-zinc-50">
+                        {t("admin.members.partial_box_title")}
+                      </span>
+                      <span className="block text-[11px] text-zinc-400">
+                        {t("admin.members.partial_box_desc")}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                        isPartial ? "bg-primary" : "bg-zinc-700"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all",
+                          isPartial ? "start-5" : "start-0.5"
+                        )}
+                      />
+                    </span>
+                  </button>
+
+                  {isPartial ? (
+                    <div className="space-y-3 rounded-xl border-2 border-primary/50 bg-primary/5 p-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="m-paid" className="text-sm font-bold">
+                            {t("admin.members.paid_now")}
+                          </Label>
+                          <Input
+                            id="m-paid"
+                            type="number"
+                            min={1}
+                            max={totalPrice > 0 ? totalPrice - 1 : undefined}
+                            placeholder="200"
+                            value={paidNow}
+                            onChange={(e) => setPaidNow(e.target.value)}
+                            className="h-11 text-base font-bold"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="m-due" className="text-sm font-bold">
+                            {t("admin.members.due_date")}
+                          </Label>
+                          <Input
+                            id="m-due"
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => {
+                              setDueDate(e.target.value);
+                              setDueTouched(true);
+                            }}
+                            className="h-11 text-base"
+                          />
+                        </div>
+                      </div>
+
+                      <p
+                        className={cn(
+                          "rounded-lg px-3 py-2.5 text-sm font-bold",
+                          partialValid && totalPrice > 0
+                            ? "bg-zinc-950/60 text-zinc-100"
+                            : "bg-red-950/60 text-red-300"
+                        )}
+                      >
+                        {partialValid && totalPrice > 0 ? (
+                          <>
+                            {t("admin.members.remaining")}{" "}
+                            <span className="text-primary">
+                              {remaining} {t("common.egp")}
+                            </span>
+                          </>
+                        ) : (
+                          t("admin.members.partial_invalid")
+                        )}
+                      </p>
+
+                      <p className="text-[11px] text-zinc-500">
+                        {t("admin.members.due_auto_hint")}
+                      </p>
+
+                      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-zinc-950/60 p-3">
+                        <input
+                          type="checkbox"
+                          checked={autoRemind}
+                          onChange={(e) => setAutoRemind(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 shrink-0 accent-lime-500"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-bold text-zinc-100">
+                            {t("admin.members.auto_remind")}
+                          </span>
+                          <span className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
+                            {t("admin.members.every")}
+                            <select
+                              value={remindEvery}
+                              onChange={(e) =>
+                                setRemindEvery(Number(e.target.value) === 15 ? 15 : 7)
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={!autoRemind}
+                              className="rounded-md border border-input bg-zinc-900 px-2 py-1 text-xs font-bold text-zinc-100 disabled:opacity-40"
+                            >
+                              <option value={7}>{t("admin.members.every_7")}</option>
+                              <option value={15}>{t("admin.members.every_15")}</option>
+                            </select>
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Plan start date */}
+              <div className="space-y-2">
+                <Label htmlFor="m-start">{t("admin.members.start_date")}</Label>
+                <Input
+                  id="m-start"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="max-w-[220px]"
+                />
+                <p className="text-[11px] text-zinc-500">
+                  {t("admin.members.start_hint")}
+                </p>
+              </div>
+
+              {/* Optional vitals — collapsed by default. */}
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setShowMore((v) => !v)}
+                  aria-expanded={showMore}
+                  className="flex w-full items-center gap-3 rounded-xl border border-border bg-zinc-950/40 px-4 py-3 text-start transition-colors hover:border-zinc-700"
+                >
+                  <Plus
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-primary transition-transform",
+                      showMore && "rotate-45"
+                    )}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-bold text-zinc-100">
-                      {t("admin.members.auto_remind")}
+                    <span className="block text-sm font-semibold text-zinc-100">
+                      {t("admin.members.more_details")}
                     </span>
-                    <span className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
-                      {t("admin.members.every")}
-                      <select
-                        value={remindEvery}
-                        onChange={(e) =>
-                          setRemindEvery(Number(e.target.value) === 15 ? 15 : 7)
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        disabled={!autoRemind}
-                        className="rounded-md border border-input bg-zinc-900 px-2 py-1 text-xs font-bold text-zinc-100 disabled:opacity-40"
-                      >
-                        <option value={7}>{t("admin.members.every_7")}</option>
-                        <option value={15}>{t("admin.members.every_15")}</option>
-                      </select>
+                    <span className="block text-[11px] text-zinc-500">
+                      {t("admin.members.more_details_hint")}
                     </span>
                   </span>
-                </label>
-              </div>
-            ) : null}
+                </button>
 
-            <div className="space-y-2">
-              <Label htmlFor="m-start">{t("admin.members.start_date")}</Label>
-              <Input
-                id="m-start"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <p className="text-[11px] text-zinc-500">{t("admin.members.start_hint")}</p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="m-age">{t("admin.members.age")}</Label>
-                <Input
-                  id="m-age"
-                  type="number"
-                  min={0}
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="m-height">{t("admin.members.height")}</Label>
-                <Input
-                  id="m-height"
-                  type="number"
-                  min={0}
-                  value={height}
-                  onChange={(e) => setHeight(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="m-weight">{t("admin.members.weight")}</Label>
-                <Input
-                  id="m-weight"
-                  type="number"
-                  min={0}
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                />
+                {showMore ? (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="m-age">{t("admin.members.age")}</Label>
+                      <Input
+                        id="m-age"
+                        type="number"
+                        min={0}
+                        value={age}
+                        onChange={(e) => setAge(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="m-height">{t("admin.members.height")}</Label>
+                      <Input
+                        id="m-height"
+                        type="number"
+                        min={0}
+                        value={height}
+                        onChange={(e) => setHeight(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="m-weight">{t("admin.members.weight")}</Label>
+                      <Input
+                        id="m-weight"
+                        type="number"
+                        min={0}
+                        value={weight}
+                        onChange={(e) => setWeight(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={pending}>
-              {pending ? t("admin.members.creating") : t("admin.members.create")}
-            </Button>
+            {/* Pinned footer with a live summary. */}
+            <div className="flex shrink-0 flex-col gap-3 border-t border-border p-4 sm:flex-row sm:items-center">
+              <p className="min-w-0 flex-1 text-xs leading-snug text-zinc-400">
+                {selectedPlan ? (
+                  <>
+                    {t("admin.members.summary_selected", {
+                      plan: selectedPlan.label,
+                      price: totalPrice.toLocaleString("en-US"),
+                    })}
+                    {cardioAddon > 0 ? (
+                      <span className="text-primary">
+                        {" "}
+                        · {t("billing.cardio")}
+                      </span>
+                    ) : null}
+                    {isPartial ? (
+                      <span className="text-zinc-500">
+                        {" "}
+                        · {t("admin.members.summary_partial")}
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  t("admin.members.summary_none")
+                )}
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => {
+                    setOpen(false);
+                    reset();
+                  }}
+                >
+                  {t("common.cancel")}
+                </Button>
+                <Button type="submit" className="flex-1 sm:flex-none" disabled={pending}>
+                  {pending ? t("admin.members.creating") : t("admin.members.create")}
+                </Button>
+              </div>
+            </div>
           </form>
         )}
       </DialogContent>

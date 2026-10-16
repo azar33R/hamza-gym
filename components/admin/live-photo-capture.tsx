@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Camera, ImagePlus, Loader2, RefreshCw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // A live camera capture for the "add member" flow. Opens the laptop / mobile
@@ -21,6 +21,8 @@ export function LivePhotoCapture({
   startingLabel,
   deniedLabel,
   galleryLabel,
+  compact = false,
+  onExpandChange,
 }: {
   value: string | null;
   onCapture: (dataUrl: string) => void;
@@ -32,6 +34,12 @@ export function LivePhotoCapture({
   startingLabel: string;
   deniedLabel: string;
   galleryLabel: string;
+  // Compact renders the resting state (idle / captured) as a small square tile
+  // so it can sit beside the name field. The transient camera states
+  // (starting / active / denied) still take the full width — the parent is told
+  // to expand via onExpandChange so the live preview has room to breathe.
+  compact?: boolean;
+  onExpandChange?: (expanded: boolean) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -39,6 +47,18 @@ export function LivePhotoCapture({
     "idle"
   );
   const [loadingFile, setLoadingFile] = useState(false);
+
+  // Tell the parent whether we need the full width. useLayoutEffect so the
+  // expand happens before paint (no one-frame overflow of the live preview).
+  const lastExpanded = useRef<boolean | null>(null);
+  useLayoutEffect(() => {
+    if (!compact) return;
+    const expanded = status !== "idle";
+    if (lastExpanded.current !== expanded) {
+      lastExpanded.current = expanded;
+      onExpandChange?.(expanded);
+    }
+  }, [compact, status, onExpandChange]);
 
   function stopStream() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -152,6 +172,29 @@ export function LivePhotoCapture({
 
   if (value) {
     // Captured preview — allow retaking or removing before submitting.
+    if (compact) {
+      return (
+        <div className="group relative aspect-square w-full overflow-hidden rounded-2xl ring-2 ring-primary/40">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt="" className="h-full w-full object-cover" />
+          <button
+            type="button"
+            aria-label={removeLabel}
+            onClick={onClear}
+            className="absolute end-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-zinc-200 transition-colors hover:bg-destructive hover:text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={startCamera}
+            className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-black/65 py-1 text-[10px] font-semibold text-zinc-100 transition-colors hover:bg-black/85"
+          >
+            <RefreshCw className="h-3 w-3" /> {retakeLabel}
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -211,6 +254,19 @@ export function LivePhotoCapture({
   }
 
   // idle — offer to open the camera.
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={startCamera}
+        className="flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/40 px-1 text-center text-zinc-400 transition-colors hover:border-primary hover:text-primary"
+      >
+        <Camera className="h-6 w-6" />
+        <span className="text-[10px] font-semibold leading-tight">{takeLabel}</span>
+      </button>
+    );
+  }
+
   return (
     <Button type="button" variant="outline" className="w-full gap-1.5" onClick={startCamera}>
       <Camera className="h-4 w-4" /> {takeLabel}
