@@ -59,6 +59,25 @@ export type Subscription = {
   end_date: string | null;
   payment_method: PaymentMethod;
   created_at: string;
+  // Partial payments (migration 0043). price_snapshot is the plan price at
+  // activation; paid_amount is cash actually collected. `remaining` is always
+  // computed (price_snapshot - paid_amount), never stored.
+  price_snapshot?: number | null;
+  paid_amount?: number | null;
+  due_date?: string | null;
+};
+
+// One cash handover against a subscription: the activation payment plus every
+// later top-up. paid_amount on the subscription always equals the sum of these.
+export type SubscriptionPayment = {
+  id: string;
+  subscription_id: string;
+  user_id: string;
+  amount: number;
+  method: PaymentMethod;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
 };
 
 export type PaymentRequest = {

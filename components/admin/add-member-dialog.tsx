@@ -52,6 +52,19 @@ export function AddMemberDialog({ plans }: Props) {
   const [queuedOffline, setQueuedOffline] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Partial cash payment: checked = the member paid only part of the plan
+  // price now and promises the rest later.
+  const [isPartial, setIsPartial] = useState(false);
+  const [paidNow, setPaidNow] = useState("");
+  const [dueDate, setDueDate] = useState("");
+
+  const selectedPlan = plans.find((p) => p.plan_type === plan) ?? null;
+  const planPrice = selectedPlan ? Number(selectedPlan.price_egp) : 0;
+  const paidAmount = Math.floor(Number(paidNow));
+  const partialValid =
+    !isPartial ||
+    (Number.isFinite(paidAmount) && paidAmount > 0 && paidAmount < planPrice);
+  const remaining = isPartial && partialValid ? planPrice - paidAmount : 0;
 
   function reset() {
     setFullName("");
@@ -67,12 +80,19 @@ export function AddMemberDialog({ plans }: Props) {
     setGeneratedCode(null);
     setQueuedOffline(false);
     setCopied(false);
+    setIsPartial(false);
+    setPaidNow("");
+    setDueDate("");
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!plan) {
       toast.error(t("admin.members.plan_required"));
+      return;
+    }
+    if (isPartial && !partialValid) {
+      toast.error(t("admin.members.partial_invalid"));
       return;
     }
 
@@ -86,6 +106,10 @@ export function AddMemberDialog({ plans }: Props) {
       age: age ? Number(age) : null,
       heightCm: height ? Number(height) : null,
       weightKg: weight ? Number(weight) : null,
+      partialPayment: isPartial
+        ? { paidNow: paidAmount, dueDate: dueDate || null }
+        : null,
+      priceSnapshot: planPrice || null,
     };
 
     // Offline: save the form + live photo locally and queue them for replay
@@ -250,7 +274,18 @@ export function AddMemberDialog({ plans }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label>{t("admin.members.plan")}</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>{t("admin.members.plan")}</Label>
+                <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200">
+                  <input
+                    type="checkbox"
+                    checked={isPartial}
+                    onChange={(e) => setIsPartial(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-lime-500"
+                  />
+                  {t("admin.members.partial")}
+                </label>
+              </div>
               <Select value={plan} onValueChange={setPlan}>
                 <SelectTrigger>
                   <SelectValue placeholder={t("admin.members.select_plan")} />
@@ -263,6 +298,45 @@ export function AddMemberDialog({ plans }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              {isPartial && (
+                <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-paid">{t("admin.members.paid_now")}</Label>
+                      <Input
+                        id="m-paid"
+                        type="number"
+                        min={1}
+                        max={planPrice > 0 ? planPrice - 1 : undefined}
+                        placeholder="200"
+                        value={paidNow}
+                        onChange={(e) => setPaidNow(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-due">{t("admin.members.due_date")}</Label>
+                      <Input
+                        id="m-due"
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-zinc-400">
+                    {partialValid && planPrice > 0 ? (
+                      <>
+                        {t("admin.members.remaining")}:{" "}
+                        <span className="font-bold text-primary">
+                          {remaining} {t("common.egp")}
+                        </span>
+                      </>
+                    ) : (
+                      t("admin.members.partial_invalid")
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

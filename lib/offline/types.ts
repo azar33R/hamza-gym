@@ -169,6 +169,11 @@ export type PendingOp =
         planType: string | null;
         startDate: string | null;
         photoDataUrl: string | null;
+        // Partial cash payment (see CreateMemberInput). Carried so the replay
+        // books the same snapshot the coach saw, even if prices changed.
+        paidNow?: number | null;
+        dueDate?: string | null;
+        priceSnapshot?: number | null;
       };
       createdAt: string;
     };

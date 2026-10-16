@@ -80,6 +80,9 @@ export type RevenueAnalytics = {
     dayPassRevenue: number;
     mrr: number;
     futureRevenue: number;
+    // Cash promised but not yet collected (sum of remaining balances).
+    outstandingRevenue: number;
+    outstandingCount: number;
   };
   // Membership overview: latest subscription per member, bucketed by status.
   breakdown: { active: number; future: number; expired: number };
@@ -118,9 +121,12 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
 
   // Every paid activation — cash, approved Vodafone, or access code — records a
   // subscriptions row. This is the source of truth for collected revenue.
+  // Totals use paid_amount (cash actually collected), NOT the plan price, so
+  // partial payments book only what changed hands. Rows predating the partial
+  // payments migration were backfilled as fully paid.
   const { data: subs } = await supabase
     .from("subscriptions")
-    .select("user_id, plan_type, start_date, end_date, created_at")
+    .select("user_id, plan_type, start_date, end_date, created_at, price_snapshot, paid_amount")
     .order("created_at", { ascending: false });
 
   // Pending Vodafone requests = money not yet collected.
@@ -142,12 +148,16 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
     start_date: string | null;
     end_date: string | null;
     created_at: string;
+    price_snapshot: number | null;
+    paid_amount: number | null;
   }[];
 
   let totalRevenue = 0;
   let monthRevenue = 0;
   let pendingRevenue = 0;
   let dayPassRevenue = 0;
+  let outstandingRevenue = 0;
+  let outstandingCount = 0;
   const byPlanMap = new Map<string, RevenueByPlan>();
   const dailyMap = new Map<string, RevenuePoint>();
   const dayPassMap = new Map<string, { quantity: number; amount: number }>();
@@ -159,17 +169,27 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
   for (const s of subRows) {
     const plan = planMap.get(s.plan_type as string);
     if (!plan) continue;
-    const price = plan.price;
+    // Cash actually collected. Falls back to the catalog price for rows that
+    // somehow predate the money columns (the 0043 backfill should prevent this).
+    const collected = s.paid_amount != null ? Number(s.paid_amount) : plan.price;
+    const owed = Math.max(
+      0,
+      (s.price_snapshot != null ? Number(s.price_snapshot) : plan.price) - collected
+    );
     const date = (s.created_at as string).split("T")[0];
 
-    totalRevenue += price;
-    if (new Date(date) >= monthStart) monthRevenue += price;
+    totalRevenue += collected;
+    if (new Date(date) >= monthStart) monthRevenue += collected;
+    if (owed > 0) {
+      outstandingRevenue += owed;
+      outstandingCount += 1;
+    }
 
     if (s.plan_type === "1-day") {
-      dayPassRevenue += price;
+      dayPassRevenue += collected;
       const dp = dayPassMap.get(date) ?? { quantity: 0, amount: 0 };
       dp.quantity += 1;
-      dp.amount += price;
+      dp.amount += collected;
       dayPassMap.set(date, dp);
     }
 
@@ -181,20 +201,20 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
         revenue: 0,
         count: 0,
       } as RevenueByPlan);
-    bp.revenue += price;
+    bp.revenue += collected;
     bp.count += 1;
     byPlanMap.set(s.plan_type as string, bp);
 
     const dp =
       dailyMap.get(date) ?? ({ date, revenue: 0, dayPass: 0 } as RevenuePoint);
-    dp.revenue += price;
+    dp.revenue += collected;
     dailyMap.set(date, dp);
 
     recent.push({
       date,
       plan_type: s.plan_type as string,
       label: plan.label,
-      amount: price,
+      amount: collected,
       source: s.plan_type === "1-day" ? "day_pass" : "payment",
       quantity: 1,
     });
@@ -310,6 +330,8 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
       dayPassRevenue: Math.round(dayPassRevenue),
       mrr: Math.round(mrr),
       futureRevenue: Math.round(futureRevenue),
+      outstandingRevenue: Math.round(outstandingRevenue),
+      outstandingCount,
     },
     breakdown,
     daily,

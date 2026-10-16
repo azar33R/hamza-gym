@@ -55,6 +55,13 @@ export type CreateMemberInput = {
   weightKg?: number | null;
   planType?: PlanType | null;
   startDate?: string | null;
+  // Partial cash payment: the member paid `paidNow` of the full plan price and
+  // promises the rest later (optionally by `dueDate`). When absent the plan is
+  // booked as fully paid.
+  partialPayment?: { paidNow: number; dueDate?: string | null } | null;
+  // Plan price the coach saw when submitting (EGP). Carried so an offline
+  // replay — which may run after a price change — books the same snapshot.
+  priceSnapshot?: number | null;
   // A base64 JPEG data URL of the client's live photo (captured from the
   // coach's camera). Optional — when present it's stored in the member's
   // face-photos folder and attached to their profile.
@@ -111,6 +118,74 @@ async function insertMemberCode(
     if (!error && data) return data.code;
   }
   return null;
+}
+
+// Book the activation payment for a freshly created subscription: either the
+// full plan price, or a partial handover (paidNow < price, rest owed). Writes
+// the ledger row AND the subscription snapshot in one place so every activation
+// path (online + offline replay) books money identically.
+async function bookActivationPayment(
+  supabase: ReturnType<typeof serviceClient>,
+  opts: {
+    userId: string;
+    planType: PlanType;
+    priceSnapshot: number | null;
+    partialPayment: { paidNow: number; dueDate?: string | null } | null;
+  }
+): Promise<{ error: string | null }> {
+  // The subscription the RPC just created is the member's latest row.
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", opts.userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const subId = (sub as { id: string } | null)?.id;
+  if (!subId) return { error: "Subscription was created but couldn't be found." };
+
+  let price = opts.priceSnapshot ?? null;
+  if (price == null) {
+    const { data: plan } = await supabase
+      .from("plans")
+      .select("price_egp")
+      .eq("plan_type", opts.planType)
+      .maybeSingle();
+    price = Number((plan as { price_egp: number } | null)?.price_egp) || 0;
+  }
+
+  const partial = opts.partialPayment;
+  const paid = partial ? Math.floor(Number(partial.paidNow)) : price;
+  if (!Number.isFinite(paid) || paid <= 0) {
+    return { error: "Paid amount must be more than 0." };
+  }
+  if (paid > price) {
+    return { error: `Too much — the plan costs ${price} EGP.` };
+  }
+  const isPartial = paid < price;
+
+  const { error: payError } = await supabase
+    .from("subscription_payments")
+    .insert({
+      subscription_id: subId,
+      user_id: opts.userId,
+      amount: paid,
+      method: "manual_coach",
+      note: isPartial ? "Partial payment at signup" : null,
+    });
+  if (payError) return { error: payError.message };
+
+  const { error: subError } = await supabase
+    .from("subscriptions")
+    .update({
+      price_snapshot: price,
+      paid_amount: paid,
+      due_date: isPartial ? partial?.dueDate ?? null : null,
+    })
+    .eq("id", subId);
+  if (subError) return { error: subError.message };
+
+  return { error: null };
 }
 
 // Shared implementation for creating a member — form fields + optional live
@@ -203,6 +278,15 @@ export async function createMemberRecord(input: CreateMemberInput & {
       p_start_date: input.startDate || null,
     });
     if (actError) return { error: actError.message, code: null, userId: null };
+
+    // Book the money: full price, or the partial amount the member handed over.
+    const { error: moneyError } = await bookActivationPayment(supabase, {
+      userId: newUser.user.id,
+      planType: input.planType,
+      priceSnapshot: input.priceSnapshot ?? null,
+      partialPayment: input.partialPayment ?? null,
+    });
+    if (moneyError) return { error: moneyError, code: null, userId: null };
 
     await sendPushToUser(
       newUser.user.id,

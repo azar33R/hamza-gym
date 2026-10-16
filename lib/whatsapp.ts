@@ -105,3 +105,31 @@ export function buildWhatsAppLink(e164Phone: string, message: string): string {
   const digits = e164Phone.replace("+", "").replace(/\D/g, "");
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
+
+/**
+ * Build the "you still owe X" text for partial cash payments. Uses i18n
+ * templates so AR/EN stay in messages/*.json:
+ * - admin.whatsapp.reminder_debt ({name} {n} {date})
+ */
+export function buildDebtMessage(
+  t: TFn,
+  opts: {
+    fullName: string | null;
+    remaining: number;
+    dueDate?: string | null;
+    locale?: string;
+    unknownLabel?: string;
+  }
+): string {
+  const name = (opts.fullName ?? "").trim() || opts.unknownLabel || "Captain";
+  const date = opts.dueDate
+    ? t("admin.whatsapp.debt_due", {
+        date: formatExpiryDate(opts.dueDate, opts.locale ?? "ar"),
+      })
+    : "";
+  return t("admin.whatsapp.reminder_debt", {
+    name,
+    n: opts.remaining,
+    date,
+  });
+}

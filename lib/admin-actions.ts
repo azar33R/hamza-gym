@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push";
 import { requireAdmin } from "@/lib/admin";
+import { recordTopUp, stampFullPayment } from "@/lib/subscription-payments";
 import type { PlanType, PaymentMethod } from "@/lib/constants";
 
 // Service-role admin client — bypasses RLS for management operations.
@@ -39,6 +40,26 @@ export async function approvePaymentRequest(requestId: string) {
   });
 
   if (rpcError) return { error: rpcError.message };
+
+  // Book the money: an approved Vodafone request is a full payment at the
+  // current plan price, with a matching ledger row.
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", req.user_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const subId = (sub as { id: string } | null)?.id;
+  if (subId) {
+    const { error: moneyError } = await stampFullPayment(
+      subId,
+      req.user_id,
+      req.plan_type as PlanType,
+      "vodafone_cash"
+    );
+    if (moneyError) return { error: moneyError };
+  }
 
   // Mark request approved.
   await supabase
@@ -96,6 +117,45 @@ export async function rejectPaymentRequest(requestId: string) {
   revalidatePath("/admin/triage");
   revalidatePath("/admin");
   return { error: null };
+}
+
+// ---- Record a cash top-up --------------------------------------------------
+// The member owed part of their plan (partial cash activation) and is now
+// handing over more. Appends a ledger row and bumps paid_amount; capped at
+// the remaining balance so overpaying is rejected, not silently absorbed.
+export async function recordTopUpPayment(
+  userId: string,
+  amount: number,
+  note?: string | null
+) {
+  const { userId: adminId } = await requireAdmin();
+
+  const res = await recordTopUp(userId, Math.floor(Number(amount)), {
+    note: note?.trim() || null,
+    createdBy: adminId,
+  });
+  if (res.error) return res;
+
+  await sendPushToUser(
+    userId,
+    res.remaining && res.remaining > 0
+      ? {
+          title: "Payment received 💪",
+          body: `Thanks! ${res.remaining} EGP still owed on your plan.`,
+        }
+      : {
+          title: "Paid in full! ✅",
+          body: "Your plan balance is settled. See you at the gym!",
+        },
+    "payment",
+    null,
+    "/dashboard"
+  );
+
+  revalidatePath("/admin/triage");
+  revalidatePath("/admin/clients");
+  revalidatePath("/admin");
+  return res;
 }
 
 // ---- Nudge an AWOL client --------------------------------------------------

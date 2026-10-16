@@ -54,6 +54,9 @@ import type { UserRole } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
 import { getUserAuthInfo } from "@/lib/admin-user-actions";
 import { WhatsAppRenewalButton } from "@/components/admin/whatsapp-renewal-button";
+import { WhatsAppDebtButton } from "@/components/admin/whatsapp-debt-button";
+import { RecordPaymentDialog } from "@/components/admin/record-payment-dialog";
+import { getPaymentHistory } from "@/lib/subscription-payments";
 import {
   arabicExpiredAgo,
   arabicRemaining,
@@ -85,7 +88,15 @@ export function UserSettingsDialog({
   onOpenChange,
 }: {
   user: UserData;
-  sub: { plan_type: string; start_date: string | null; end_date: string | null } | null;
+  sub: {
+    id?: string | null;
+    plan_type: string;
+    start_date: string | null;
+    end_date: string | null;
+    price_snapshot?: number | null;
+    paid_amount?: number | null;
+    due_date?: string | null;
+  } | null;
   plans: Plan[];
   attendance: AttendanceLog[];
   templates: { id: string; name: string }[];
@@ -127,11 +138,22 @@ export function UserSettingsDialog({
   >([]);
   const [contact, setContact] = useState<{ phone: string | null; email: string | null } | null>(null);
   const [phoneRevealed, setPhoneRevealed] = useState(false);
+  const [payments, setPayments] = useState<
+    { id: string; amount: number; method: string; note: string | null; created_at: string }[]
+  >([]);
 
   useEffect(() => {
     if (!open) return;
     getUserAuthInfo(user.id).then(setContact);
   }, [open, user.id]);
+
+  useEffect(() => {
+    if (!open || !sub?.id) {
+      setPayments([]);
+      return;
+    }
+    getPaymentHistory(sub.id).then(setPayments);
+  }, [open, sub?.id, user.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -331,6 +353,109 @@ export function UserSettingsDialog({
           {/* ---- Payment ---- */}
           <TabsContent value="payment">
             <div className="space-y-5">
+              {sub &&
+                (() => {
+                  const price = Number(sub.price_snapshot) || 0;
+                  const paid = Number(sub.paid_amount) || 0;
+                  const remaining = Math.max(0, price - paid);
+                  // Money columns only exist for subscriptions booked after the
+                  // partial-payments migration (or backfilled by it). A zero
+                  // price means "no money data", not "free plan" — hide the card.
+                  if (price <= 0) return null;
+                  return (
+                    <div className="rounded-lg border border-border bg-zinc-950/40 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-medium text-zinc-50">
+                          {t("admin.debt.balance_title")}
+                        </h3>
+                        {remaining > 0 && (
+                          <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                            {t("triage.owes", { n: remaining })}
+                          </span>
+                        )}
+                      </div>
+                      <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded-md bg-zinc-900 px-2 py-2">
+                          <dt className="text-[10px] text-zinc-500">
+                            {t("admin.debt.price")}
+                          </dt>
+                          <dd className="mt-0.5 text-sm font-bold text-zinc-100" dir="ltr">
+                            {price}
+                          </dd>
+                        </div>
+                        <div className="rounded-md bg-zinc-900 px-2 py-2">
+                          <dt className="text-[10px] text-zinc-500">
+                            {t("admin.debt.paid")}
+                          </dt>
+                          <dd className="mt-0.5 text-sm font-bold text-zinc-100" dir="ltr">
+                            {paid}
+                          </dd>
+                        </div>
+                        <div className="rounded-md bg-zinc-900 px-2 py-2">
+                          <dt className="text-[10px] text-zinc-500">
+                            {t("admin.debt.remaining")}
+                          </dt>
+                          <dd
+                            className={`mt-0.5 text-sm font-bold ${
+                              remaining > 0 ? "text-primary" : "text-emerald-400"
+                            }`}
+                            dir="ltr"
+                          >
+                            {remaining}
+                          </dd>
+                        </div>
+                      </dl>
+                      {sub.due_date && remaining > 0 && (
+                        <p className="mt-2 text-[11px] text-zinc-500">
+                          {t("admin.debt.due_on", {
+                            date: new Date(sub.due_date + "T00:00:00").toLocaleDateString(),
+                          })}
+                        </p>
+                      )}
+                      {payments.length > 0 && (
+                        <ul className="mt-3 space-y-1">
+                          {payments.map((p) => (
+                            <li
+                              key={p.id}
+                              className="flex items-center justify-between rounded-md bg-zinc-900 px-3 py-1.5 text-xs"
+                            >
+                              <span className="text-zinc-400">
+                                {new Date(p.created_at).toLocaleDateString()}
+                                {p.note ? ` · ${p.note}` : ""}
+                              </span>
+                              <span className="font-bold text-zinc-100" dir="ltr">
+                                +{Number(p.amount)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {remaining > 0 && (
+                        <div className="mt-3 flex gap-2">
+                          <div className="flex-1">
+                            <RecordPaymentDialog
+                              userId={user.id}
+                              userName={user.full_name}
+                              remaining={remaining}
+                              trigger={
+                                <Button className="w-full gap-1.5" size="sm">
+                                  {t("admin.debt.record_payment")}
+                                </Button>
+                              }
+                            />
+                          </div>
+                          <WhatsAppDebtButton
+                            userId={user.id}
+                            fullName={user.full_name}
+                            remaining={remaining}
+                            dueDate={sub.due_date}
+                            preloadedPhone={contact?.phone ?? null}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               {sub && (
                 <div className="rounded-lg border border-border bg-zinc-950/40 p-4">
                   <h3 className="flex items-center gap-2 text-sm font-medium text-zinc-50">

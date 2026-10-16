@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { sendPushToUser } from "@/lib/push";
+import { stampFullPayment } from "@/lib/subscription-payments";
 import type { PlanType, PaymentMethod } from "@/lib/constants";
 
 function serviceClient() {
@@ -30,6 +31,26 @@ export async function activateViaCash(
   });
 
   if (error) return { error: error.message };
+
+  // Book the money: a manual cash activation is a full payment at the current
+  // plan price, with a matching ledger row.
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const subId = (sub as { id: string } | null)?.id;
+  if (subId) {
+    const { error: moneyError } = await stampFullPayment(
+      subId,
+      userId,
+      planType,
+      "manual_coach"
+    );
+    if (moneyError) return { error: moneyError };
+  }
 
   await sendPushToUser(
     userId,

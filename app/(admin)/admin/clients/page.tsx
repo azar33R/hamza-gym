@@ -52,7 +52,7 @@ export default async function ClientsPage() {
   const { data: subs } = subIds.length
     ? await supabase
         .from("subscriptions")
-        .select("id, user_id, plan_type, start_date, end_date")
+        .select("id, user_id, plan_type, start_date, end_date, price_snapshot, paid_amount, due_date")
         .in("user_id", subIds)
         .order("created_at", { ascending: false })
     : { data: [] };
@@ -60,14 +60,26 @@ export default async function ClientsPage() {
   // Keep the most recent subscription per user.
   const latestSub = new Map<
     string,
-    { plan_type: string; start_date: string | null; end_date: string | null }
+    {
+      id: string;
+      plan_type: string;
+      start_date: string | null;
+      end_date: string | null;
+      price_snapshot: number | null;
+      paid_amount: number | null;
+      due_date: string | null;
+    }
   >();
   for (const s of subs ?? []) {
     if (!latestSub.has(s.user_id)) {
       latestSub.set(s.user_id, {
+        id: s.id,
         plan_type: s.plan_type,
         start_date: s.start_date,
         end_date: s.end_date,
+        price_snapshot: s.price_snapshot ?? null,
+        paid_amount: s.paid_amount ?? null,
+        due_date: s.due_date ?? null,
       });
     }
   }
@@ -121,7 +133,7 @@ export default async function ClientsPage() {
   const { data: expiring } = await supabase
     .from("subscriptions")
     .select(
-      "id, user_id, plan_type, start_date, end_date, profiles(id, full_name, face_photo_url, subscription_status, created_at, height_cm, weight_kg, gender, role)"
+      "id, user_id, plan_type, start_date, end_date, price_snapshot, paid_amount, due_date, profiles(id, full_name, face_photo_url, subscription_status, created_at, height_cm, weight_kg, gender, role)"
     )
     .lte("end_date", fiveDaysLater.toISOString().split("T")[0])
     .gte("end_date", todayKey)

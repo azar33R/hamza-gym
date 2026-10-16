@@ -90,6 +90,23 @@ export default async function RevenueAnalysisPage() {
         />
       </div>
 
+      {/* Outstanding balances: promised but not yet collected */}
+      {data.totals.outstandingCount > 0 && (
+        <Link
+          href="/admin/triage"
+          className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 transition-colors hover:border-primary/50"
+        >
+          <span className="text-sm text-zinc-300">
+            {t("admin.revenue.outstanding_line", {
+              n: data.totals.outstandingCount,
+            })}
+          </span>
+          <span className="text-sm font-bold text-primary">
+            {fmt(data.totals.outstandingRevenue)}
+          </span>
+        </Link>
+      )}
+
       {/* Membership overview — active now, scheduled later, ended */}
       <section className="rounded-2xl border border-border bg-card p-5">
         <h2 className="text-sm font-medium text-zinc-400">

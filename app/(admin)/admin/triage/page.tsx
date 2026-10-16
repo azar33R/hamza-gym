@@ -24,6 +24,8 @@ import {
   ApproveLiftButton,
   RejectLiftButton,
 } from "@/components/admin/triage-actions";
+import { RecordPaymentDialog } from "@/components/admin/record-payment-dialog";
+import { WhatsAppDebtButton } from "@/components/admin/whatsapp-debt-button";
 import { pendingLifts } from "@/lib/lift-actions";
 import { getT } from "@/lib/i18n/server";
 
@@ -69,6 +71,36 @@ export default async function TriagePage() {
   // 4) Pending lift verifications
   const { submissions: liftSubmissions } = await pendingLifts();
 
+  // 5) Debts: subscriptions with a remaining balance (partial cash payments).
+  //    Column-to-column comparison isn't expressible in PostgREST, so fetch the
+  //    money columns and filter in JS.
+  type DebtRow = {
+    id: string;
+    user_id: string;
+    plan_type: string;
+    price_snapshot: number | null;
+    paid_amount: number | null;
+    due_date: string | null;
+    profiles: {
+      full_name: string | null;
+      face_photo_url: string | null;
+      phone: string | null;
+    } | null;
+  };
+  const { data: debtCandidates } = await supabase
+    .from("subscriptions")
+    .select("id, user_id, plan_type, price_snapshot, paid_amount, due_date, profiles(full_name, face_photo_url, phone)")
+    .order("created_at", { ascending: false })
+    .returns<DebtRow[]>();
+  const debts = (debtCandidates ?? [])
+    .map((d) => ({
+      ...d,
+      price: Number(d.price_snapshot) || 0,
+      paid: Number(d.paid_amount) || 0,
+    }))
+    .filter((d) => d.price - d.paid > 0)
+    .map((d) => ({ ...d, remaining: d.price - d.paid }));
+
   return (
     <div className="space-y-6">
       <header>
@@ -84,6 +116,12 @@ export default async function TriagePage() {
             {t("triage.pending_cash")}
             <Badge variant="muted" className="ms-1.5">
               {pendingReqs?.length ?? 0}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="debts">
+            {t("triage.debts")}
+            <Badge variant="muted" className="ms-1.5">
+              {debts.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="awol">
@@ -149,6 +187,80 @@ export default async function TriagePage() {
                         <div className="flex justify-end gap-2">
                           <ApproveButton requestId={r.id} />
                           <RejectButton requestId={r.id} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ---- Debts (partial cash payments) ---- */}
+        <TabsContent value="debts">
+          {debts.length === 0 ? (
+            <EmptyState message={t("triage.no_debts")} />
+          ) : (
+            <div className="rounded-xl border border-border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("triage.col_member")}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{t("triage.col_plan")}</TableHead>
+                    <TableHead>{t("triage.col_remaining")}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{t("triage.col_due")}</TableHead>
+                    <TableHead className="text-end">{t("triage.col_action")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {debts.map((d) => (
+                    <TableRow key={d.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <MemberAvatar
+                            photoUrl={d.profiles?.face_photo_url ?? null}
+                            name={d.profiles?.full_name}
+                          />
+                          <Link
+                            href={`/admin/clients/${d.user_id}`}
+                            className="font-medium text-zinc-50 underline-offset-4 hover:underline"
+                          >
+                            {d.profiles?.full_name ?? t("common.unknown")}
+                          </Link>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden capitalize text-zinc-300 sm:table-cell">
+                        {d.plan_type.replace("-", " ")}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-bold text-zinc-50" dir="ltr">
+                          {d.paid}
+                          <span className="text-zinc-500">/{d.price}</span>
+                        </span>
+                        <span className="ms-2 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
+                          {t("triage.owes", { n: d.remaining })}
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden text-zinc-400 sm:table-cell">
+                        {d.due_date
+                          ? new Date(d.due_date + "T00:00:00").toLocaleDateString()
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-end">
+                        <div className="flex items-center justify-end gap-1">
+                          <WhatsAppDebtButton
+                            userId={d.user_id}
+                            fullName={d.profiles?.full_name ?? null}
+                            remaining={d.remaining}
+                            dueDate={d.due_date}
+                            preloadedPhone={d.profiles?.phone ?? null}
+                          />
+                          <RecordPaymentDialog
+                            userId={d.user_id}
+                            userName={d.profiles?.full_name ?? null}
+                            remaining={d.remaining}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

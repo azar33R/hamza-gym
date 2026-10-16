@@ -458,6 +458,8 @@ export async function applyQueuedOp(
     case "createMember": {
       // Replay an offline member creation. The client op id is stamped on the
       // profile so a partial/duplicate sync never creates a second account.
+      const paidNow =
+        op.payload.paidNow != null ? Number(op.payload.paidNow) : null;
       const res = await createMemberRecord({
         fullName: op.payload.fullName,
         phone: op.payload.phone,
@@ -469,6 +471,14 @@ export async function applyQueuedOp(
         planType: (op.payload.planType as never) || null,
         startDate: op.payload.startDate,
         photoDataUrl: op.payload.photoDataUrl,
+        partialPayment:
+          paidNow != null && Number.isFinite(paidNow)
+            ? { paidNow, dueDate: op.payload.dueDate ?? null }
+            : null,
+        priceSnapshot:
+          op.payload.priceSnapshot != null
+            ? Number(op.payload.priceSnapshot)
+            : null,
         clientOpId: op.id,
       });
       if (res.error) return { ok: false, error: res.error };

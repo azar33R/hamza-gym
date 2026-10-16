@@ -30,6 +30,9 @@ export type ExpiringRow = {
   plan_type: string;
   start_date: string | null;
   end_date: string | null;
+  price_snapshot: number | null;
+  paid_amount: number | null;
+  due_date: string | null;
   profiles: {
     id: string;
     full_name: string | null;
@@ -86,18 +89,26 @@ export function ExpiringTable({
     null
   );
   const [selectedSub, setSelectedSub] = useState<{
+    id: string | null;
     plan_type: string;
     start_date: string | null;
     end_date: string | null;
+    price_snapshot: number | null;
+    paid_amount: number | null;
+    due_date: string | null;
   } | null>(null);
 
   function openSettings(row: ExpiringRow) {
     if (!row.profiles) return;
     setSelected(row.profiles);
     setSelectedSub({
+      id: row.id,
       plan_type: row.plan_type,
       start_date: row.start_date,
       end_date: row.end_date,
+      price_snapshot: row.price_snapshot,
+      paid_amount: row.paid_amount,
+      due_date: row.due_date,
     });
   }
 

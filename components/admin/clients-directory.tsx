@@ -76,7 +76,15 @@ export function ClientsDirectory({
   users: RowUser[];
   latestSub: Map<
     string,
-    { plan_type: string; start_date: string | null; end_date: string | null }
+    {
+      id: string;
+      plan_type: string;
+      start_date: string | null;
+      end_date: string | null;
+      price_snapshot: number | null;
+      paid_amount: number | null;
+      due_date: string | null;
+    }
   >;
   plans: Plan[];
   templates: { id: string; name: string }[];
@@ -216,6 +224,16 @@ export function ClientsDirectory({
                     </TableCell>
                     <TableCell className="capitalize text-zinc-300">
                       {sub?.plan_type?.replace("-", " ") ?? "—"}
+                      {(() => {
+                        const price = Number(sub?.price_snapshot) || 0;
+                        const paid = Number(sub?.paid_amount) || 0;
+                        const owed = price - paid;
+                        return owed > 0 ? (
+                          <span className="ms-2 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold normal-case text-primary">
+                            {t("triage.owes", { n: owed })}
+                          </span>
+                        ) : null;
+                      })()}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {sub?.end_date ? (
