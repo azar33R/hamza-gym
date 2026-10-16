@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { toast } from "sonner";
-import { Copy, Check, UserPlus, CloudUpload } from "lucide-react";
+import { Copy, Check, UserPlus, CloudUpload, HandCoins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,9 +57,33 @@ export function AddMemberDialog({ plans }: Props) {
   const [isPartial, setIsPartial] = useState(false);
   const [paidNow, setPaidNow] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [dueTouched, setDueTouched] = useState(false);
+  // Auto WhatsApp nudges for the remainder. Stored per subscription as
+  // reminder_every_days (null = off, otherwise 7 or 15).
+  const [autoRemind, setAutoRemind] = useState(true);
+  const [remindEvery, setRemindEvery] = useState<7 | 15>(7);
 
   const selectedPlan = plans.find((p) => p.plan_type === plan) ?? null;
   const planPrice = selectedPlan ? Number(selectedPlan.price_egp) : 0;
+
+  // Due date defaults to 7 days after the start date. It fills in the moment
+  // partial is switched on (or the start date changes) until the coach edits
+  // it by hand — after that we never overwrite their choice.
+  useEffect(() => {
+    if (!isPartial || dueTouched) return;
+    const base = startDate || new Date().toISOString().split("T")[0];
+    const d = new Date(`${base}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return;
+    d.setDate(d.getDate() + 7);
+    setDueDate(d.toISOString().split("T")[0]);
+  }, [isPartial, startDate, dueTouched]);
+
+  // The partial box only makes sense once a plan (and its price) exists.
+  useEffect(() => {
+    if (!plan) {
+      setIsPartial(false);
+    }
+  }, [plan]);
   const paidAmount = Math.floor(Number(paidNow));
   const partialValid =
     !isPartial ||
@@ -83,6 +107,9 @@ export function AddMemberDialog({ plans }: Props) {
     setIsPartial(false);
     setPaidNow("");
     setDueDate("");
+    setDueTouched(false);
+    setAutoRemind(true);
+    setRemindEvery(7);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -107,7 +134,11 @@ export function AddMemberDialog({ plans }: Props) {
       heightCm: height ? Number(height) : null,
       weightKg: weight ? Number(weight) : null,
       partialPayment: isPartial
-        ? { paidNow: paidAmount, dueDate: dueDate || null }
+        ? {
+            paidNow: paidAmount,
+            dueDate: dueDate || null,
+            reminderEveryDays: autoRemind ? remindEvery : null,
+          }
         : null,
       priceSnapshot: planPrice || null,
     };
@@ -274,18 +305,7 @@ export function AddMemberDialog({ plans }: Props) {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label>{t("admin.members.plan")}</Label>
-                <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200">
-                  <input
-                    type="checkbox"
-                    checked={isPartial}
-                    onChange={(e) => setIsPartial(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-lime-500"
-                  />
-                  {t("admin.members.partial")}
-                </label>
-              </div>
+              <Label>{t("admin.members.plan")}</Label>
               <Select value={plan} onValueChange={setPlan}>
                 <SelectTrigger>
                   <SelectValue placeholder={t("admin.members.select_plan")} />
@@ -298,46 +318,135 @@ export function AddMemberDialog({ plans }: Props) {
                   ))}
                 </SelectContent>
               </Select>
-              {isPartial && (
-                <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="m-paid">{t("admin.members.paid_now")}</Label>
-                      <Input
-                        id="m-paid"
-                        type="number"
-                        min={1}
-                        max={planPrice > 0 ? planPrice - 1 : undefined}
-                        placeholder="200"
-                        value={paidNow}
-                        onChange={(e) => setPaidNow(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="m-due">{t("admin.members.due_date")}</Label>
-                      <Input
-                        id="m-due"
-                        type="date"
-                        value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-zinc-400">
-                    {partialValid && planPrice > 0 ? (
-                      <>
-                        {t("admin.members.remaining")}:{" "}
-                        <span className="font-bold text-primary">
-                          {remaining} {t("common.egp")}
-                        </span>
-                      </>
-                    ) : (
-                      t("admin.members.partial_invalid")
-                    )}
+            </div>
+
+            {plan ? (
+              <button
+                type="button"
+                onClick={() => setIsPartial((v) => !v)}
+                aria-pressed={isPartial}
+                className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-start transition-colors ${
+                  isPartial
+                    ? "border-primary bg-primary/10"
+                    : "border-dashed border-zinc-700 bg-zinc-950/40 hover:border-primary/50"
+                }`}
+              >
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+                    isPartial ? "bg-primary text-black" : "bg-zinc-800 text-primary"
+                  }`}
+                >
+                  <HandCoins className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold text-zinc-50">
+                    {t("admin.members.partial_box_title")}
+                  </span>
+                  <span className="block text-xs text-zinc-400">
+                    {t("admin.members.partial_box_desc")}
+                  </span>
+                </span>
+                <span
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                    isPartial ? "bg-primary" : "bg-zinc-700"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                      isPartial ? "" : ""
+                    }`}
+                    style={
+                      isPartial
+                        ? { insetInlineEnd: "2px" }
+                        : { insetInlineStart: "2px" }
+                    }
+                  />
+                </span>
+              </button>
+            ) : null}
+            {plan && isPartial ? (
+              <div className="space-y-3 rounded-xl border-2 border-primary/50 bg-primary/5 p-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="m-paid" className="text-sm font-bold">
+                    {t("admin.members.paid_now")}
+                  </Label>
+                  <Input
+                    id="m-paid"
+                    type="number"
+                    min={1}
+                    max={planPrice > 0 ? planPrice - 1 : undefined}
+                    placeholder="200"
+                    value={paidNow}
+                    onChange={(e) => setPaidNow(e.target.value)}
+                    className="h-12 text-lg font-bold"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="m-due" className="text-sm font-bold">
+                    {t("admin.members.due_date")}
+                  </Label>
+                  <Input
+                    id="m-due"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => {
+                      setDueDate(e.target.value);
+                      setDueTouched(true);
+                    }}
+                    className="h-12 text-base"
+                  />
+                  <p className="text-[11px] text-zinc-500">
+                    {t("admin.members.due_auto_hint")}
                   </p>
                 </div>
-              )}
-            </div>
+                <p
+                  className={`rounded-lg px-3 py-2.5 text-sm font-bold ${
+                    partialValid && planPrice > 0
+                      ? "bg-zinc-900 text-zinc-100"
+                      : "bg-red-950/60 text-red-300"
+                  }`}
+                >
+                  {partialValid && planPrice > 0 ? (
+                    <>
+                      {t("admin.members.remaining")}:{" "}
+                      <span className="text-lg text-primary">
+                        {remaining} {t("common.egp")}
+                      </span>
+                    </>
+                  ) : (
+                    t("admin.members.partial_invalid")
+                  )}
+                </p>
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                  <input
+                    type="checkbox"
+                    checked={autoRemind}
+                    onChange={(e) => setAutoRemind(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-lime-500"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-bold text-zinc-100">
+                      {t("admin.members.auto_remind")}
+                    </span>
+                    <span className="mt-1 flex items-center gap-2 text-xs text-zinc-400">
+                      {t("admin.members.every")}
+                      <select
+                        value={remindEvery}
+                        onChange={(e) =>
+                          setRemindEvery(Number(e.target.value) === 15 ? 15 : 7)
+                        }
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={!autoRemind}
+                        className="rounded-md border border-input bg-zinc-900 px-2 py-1 text-xs font-bold text-zinc-100 disabled:opacity-40"
+                      >
+                        <option value={7}>{t("admin.members.every_7")}</option>
+                        <option value={15}>{t("admin.members.every_15")}</option>
+                      </select>
+                    </span>
+                  </span>
+                </label>
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor="m-start">{t("admin.members.start_date")}</Label>

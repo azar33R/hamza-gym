@@ -173,6 +173,7 @@ export type PendingOp =
         // books the same snapshot the coach saw, even if prices changed.
         paidNow?: number | null;
         dueDate?: string | null;
+        reminderEveryDays?: number | null;
         priceSnapshot?: number | null;
       };
       createdAt: string;

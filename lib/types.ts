@@ -65,6 +65,9 @@ export type Subscription = {
   price_snapshot?: number | null;
   paid_amount?: number | null;
   due_date?: string | null;
+  // Auto-reminder cadence (migration 0044): null = off, otherwise 7 or 15.
+  reminder_every_days?: number | null;
+  last_reminded_at?: string | null;
 };
 
 // One cash handover against a subscription: the activation payment plus every

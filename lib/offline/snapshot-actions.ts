@@ -473,7 +473,11 @@ export async function applyQueuedOp(
         photoDataUrl: op.payload.photoDataUrl,
         partialPayment:
           paidNow != null && Number.isFinite(paidNow)
-            ? { paidNow, dueDate: op.payload.dueDate ?? null }
+            ? {
+                paidNow,
+                dueDate: op.payload.dueDate ?? null,
+                reminderEveryDays: op.payload.reminderEveryDays ?? null,
+              }
             : null,
         priceSnapshot:
           op.payload.priceSnapshot != null

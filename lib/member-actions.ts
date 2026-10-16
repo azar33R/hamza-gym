@@ -57,8 +57,13 @@ export type CreateMemberInput = {
   startDate?: string | null;
   // Partial cash payment: the member paid `paidNow` of the full plan price and
   // promises the rest later (optionally by `dueDate`). When absent the plan is
-  // booked as fully paid.
-  partialPayment?: { paidNow: number; dueDate?: string | null } | null;
+  // booked as fully paid. `reminderEveryDays` (7/15/null) opts the remainder
+  // into automatic WhatsApp nudges on that cadence.
+  partialPayment?: {
+    paidNow: number;
+    dueDate?: string | null;
+    reminderEveryDays?: number | null;
+  } | null;
   // Plan price the coach saw when submitting (EGP). Carried so an offline
   // replay — which may run after a price change — books the same snapshot.
   priceSnapshot?: number | null;
@@ -130,7 +135,11 @@ async function bookActivationPayment(
     userId: string;
     planType: PlanType;
     priceSnapshot: number | null;
-    partialPayment: { paidNow: number; dueDate?: string | null } | null;
+    partialPayment: {
+      paidNow: number;
+      dueDate?: string | null;
+      reminderEveryDays?: number | null;
+    } | null;
   }
 ): Promise<{ error: string | null }> {
   // The subscription the RPC just created is the member's latest row.
@@ -181,6 +190,12 @@ async function bookActivationPayment(
       price_snapshot: price,
       paid_amount: paid,
       due_date: isPartial ? partial?.dueDate ?? null : null,
+      // 7/15-day auto reminders only make sense while something is owed.
+      reminder_every_days: isPartial
+        ? partial?.reminderEveryDays === 7 || partial?.reminderEveryDays === 15
+          ? partial.reminderEveryDays
+          : null
+        : null,
     })
     .eq("id", subId);
   if (subError) return { error: subError.message };
