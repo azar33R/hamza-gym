@@ -19,7 +19,8 @@ function serviceClient() {
 export async function activateViaCash(
   userId: string,
   planType: PlanType,
-  startDate?: string | null
+  startDate?: string | null,
+  opts: { cardio?: boolean; cardioPriceSnapshot?: number | null } = {}
 ) {
   const supabase = serviceClient();
 
@@ -33,7 +34,7 @@ export async function activateViaCash(
   if (error) return { error: error.message };
 
   // Book the money: a manual cash activation is a full payment at the current
-  // plan price, with a matching ledger row.
+  // plan price (+ cardio when ticked), with a matching ledger row.
   const { data: sub } = await supabase
     .from("subscriptions")
     .select("id")
@@ -47,7 +48,12 @@ export async function activateViaCash(
       subId,
       userId,
       planType,
-      "manual_coach"
+      "manual_coach",
+      null,
+      {
+        cardio: opts.cardio ?? false,
+        cardioPriceSnapshot: opts.cardioPriceSnapshot ?? null,
+      }
     );
     if (moneyError) return { error: moneyError };
   }

@@ -174,6 +174,8 @@ export type PendingOp =
         paidNow?: number | null;
         dueDate?: string | null;
         reminderEveryDays?: number | null;
+        cardio?: boolean | null;
+        cardioPriceSnapshot?: number | null;
         priceSnapshot?: number | null;
       };
       createdAt: string;

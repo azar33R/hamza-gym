@@ -117,6 +117,8 @@ export async function queueCreateMember(payload: {
   paidNow?: number | null;
   dueDate?: string | null;
   reminderEveryDays?: number | null;
+  cardio?: boolean | null;
+  cardioPriceSnapshot?: number | null;
   priceSnapshot?: number | null;
 }): Promise<QueueItem> {
   const item = make("createMember", {
@@ -133,6 +135,8 @@ export async function queueCreateMember(payload: {
     paidNow: payload.paidNow ?? null,
     dueDate: payload.dueDate ?? null,
     reminderEveryDays: payload.reminderEveryDays ?? null,
+    cardio: payload.cardio ?? null,
+    cardioPriceSnapshot: payload.cardioPriceSnapshot ?? null,
     priceSnapshot: payload.priceSnapshot ?? null,
   });
   await enqueue(item);

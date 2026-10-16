@@ -471,6 +471,11 @@ export async function applyQueuedOp(
         planType: (op.payload.planType as never) || null,
         startDate: op.payload.startDate,
         photoDataUrl: op.payload.photoDataUrl,
+        cardio: op.payload.cardio ?? false,
+        cardioPriceSnapshot:
+          op.payload.cardioPriceSnapshot != null
+            ? Number(op.payload.cardioPriceSnapshot)
+            : null,
         partialPayment:
           paidNow != null && Number.isFinite(paidNow)
             ? {

@@ -117,6 +117,7 @@ export function UserSettingsDialog({
 
   const today = new Date().toISOString().split("T")[0];
   const [cashStartDate, setCashStartDate] = useState<string>(today);
+  const [cashCardio, setCashCardio] = useState(false);
   const [subStart, setSubStart] = useState<string>(sub?.start_date ?? today);
   const [subEnd, setSubEnd] = useState<string>(sub?.end_date ?? today);
 
@@ -127,6 +128,7 @@ export function UserSettingsDialog({
   // Reset the period editor whenever the dialog targets a different user.
   useEffect(() => {
     setCashStartDate(today);
+    setCashCardio(false);
     setSubStart(sub?.start_date ?? today);
     setSubEnd(sub?.end_date ?? today);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -509,7 +511,13 @@ export function UserSettingsDialog({
                   {t("admin.user_settings.manual_payment_desc")}
                 </p>
                 <div className="mt-3 space-y-3">
-                  <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                  <Select
+                    value={selectedPlan}
+                    onValueChange={(v) => {
+                      setSelectedPlan(v);
+                      setCashCardio(false);
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder={t("admin.user_settings.select_plan")} />
                     </SelectTrigger>
@@ -521,6 +529,24 @@ export function UserSettingsDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  {(() => {
+                    const cashPlan = plans.find((p) => p.plan_type === selectedPlan);
+                    const cashCardioPrice = Number(cashPlan?.cardio_price) || 0;
+                    if (!cashPlan || cashCardioPrice <= 0) return null;
+                    return (
+                      <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-zinc-950/40 px-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={cashCardio}
+                          onChange={(e) => setCashCardio(e.target.checked)}
+                          className="h-4 w-4 shrink-0 accent-lime-500"
+                        />
+                        <span className="min-w-0 flex-1 text-sm font-semibold text-zinc-100">
+                          {t("billing.add_cardio", { price: cashCardioPrice })}
+                        </span>
+                      </label>
+                    );
+                  })()}
                   <div className="space-y-1.5">
                     <Label htmlFor="us-cash-start">{t("admin.user_settings.start_date")}</Label>
                     <Input
@@ -542,7 +568,10 @@ export function UserSettingsDialog({
                           activateViaCash(
                             user.id,
                             selectedPlan as any,
-                            cashStartDate
+                            cashStartDate,
+                            {
+                              cardio: cashCardio,
+                            }
                           ),
                         t("admin.user_settings.activated_msg"),
                         true

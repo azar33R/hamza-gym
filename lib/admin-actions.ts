@@ -23,10 +23,10 @@ export async function approvePaymentRequest(requestId: string) {
   await requireAdmin();
   const supabase = serviceClient();
 
-  // Fetch the request to get user + plan.
+  // Fetch the request to get user + plan (+ the cardio the member paid for).
   const { data: req } = await supabase
     .from("payment_requests")
-    .select("user_id, plan_type")
+    .select("user_id, plan_type, cardio, cardio_price_snapshot")
     .eq("id", requestId)
     .single();
 
@@ -42,7 +42,8 @@ export async function approvePaymentRequest(requestId: string) {
   if (rpcError) return { error: rpcError.message };
 
   // Book the money: an approved Vodafone request is a full payment at the
-  // current plan price, with a matching ledger row.
+  // current plan price (+ the cardio add-on the member paid for), with a
+  // matching ledger row.
   const { data: sub } = await supabase
     .from("subscriptions")
     .select("id")
@@ -56,7 +57,14 @@ export async function approvePaymentRequest(requestId: string) {
       subId,
       req.user_id,
       req.plan_type as PlanType,
-      "vodafone_cash"
+      "vodafone_cash",
+      null,
+      {
+        cardio: (req as { cardio?: boolean }).cardio ?? false,
+        cardioPriceSnapshot: Number(
+          (req as { cardio_price_snapshot?: number }).cardio_price_snapshot
+        ) || null,
+      }
     );
     if (moneyError) return { error: moneyError };
   }
