@@ -68,6 +68,11 @@ export type Subscription = {
   // Auto-reminder cadence (migration 0044): null = off, otherwise 7 or 15.
   reminder_every_days?: number | null;
   last_reminded_at?: string | null;
+  // Cardio add-on (migration 0045, mirrors payment_requests): whether it was
+  // included + its price at activation. price_snapshot is the TOTAL (plan +
+  // cardio), so revenue/remaining maths just read the snapshot.
+  cardio?: boolean | null;
+  cardio_price_snapshot?: number | null;
 };
 
 // One cash handover against a subscription: the activation payment plus every

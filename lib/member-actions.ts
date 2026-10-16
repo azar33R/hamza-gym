@@ -55,6 +55,11 @@ export type CreateMemberInput = {
   weightKg?: number | null;
   planType?: PlanType | null;
   startDate?: string | null;
+  // Cardio add-on: the coach ticked it, so the total owed becomes plan +
+  // cardio. `cardioPriceSnapshot` is what the coach saw (carried for offline
+  // replay, same as priceSnapshot).
+  cardio?: boolean | null;
+  cardioPriceSnapshot?: number | null;
   // Partial cash payment: the member paid `paidNow` of the full plan price and
   // promises the rest later (optionally by `dueDate`). When absent the plan is
   // booked as fully paid. `reminderEveryDays` (7/15/null) opts the remainder
@@ -135,6 +140,8 @@ async function bookActivationPayment(
     userId: string;
     planType: PlanType;
     priceSnapshot: number | null;
+    cardio?: boolean | null;
+    cardioPriceSnapshot?: number | null;
     partialPayment: {
       paidNow: number;
       dueDate?: string | null;
@@ -154,13 +161,20 @@ async function bookActivationPayment(
   if (!subId) return { error: "Subscription was created but couldn't be found." };
 
   let price = opts.priceSnapshot ?? null;
+  let cardioAddon = Math.floor(Number(opts.cardioPriceSnapshot)) || 0;
   if (price == null) {
     const { data: plan } = await supabase
       .from("plans")
-      .select("price_egp")
+      .select("price_egp, cardio_price")
       .eq("plan_type", opts.planType)
       .maybeSingle();
-    price = Number((plan as { price_egp: number } | null)?.price_egp) || 0;
+    const row = (plan as { price_egp: number; cardio_price: number } | null) ?? null;
+    price = (Number(row?.price_egp) || 0) + (opts.cardio ? Number(row?.cardio_price) || 0 : 0);
+    cardioAddon = opts.cardio ? Math.floor(Number(row?.cardio_price) || 0) : 0;
+  } else if (!opts.cardio) {
+    // Snapshot already carries the coach-side total — but without cardio
+    // ticked there is no add-on to record.
+    cardioAddon = 0;
   }
 
   const partial = opts.partialPayment;
@@ -196,6 +210,8 @@ async function bookActivationPayment(
           ? partial.reminderEveryDays
           : null
         : null,
+      cardio: cardioAddon > 0,
+      cardio_price_snapshot: cardioAddon,
     })
     .eq("id", subId);
   if (subError) return { error: subError.message };
@@ -299,6 +315,8 @@ export async function createMemberRecord(input: CreateMemberInput & {
       userId: newUser.user.id,
       planType: input.planType,
       priceSnapshot: input.priceSnapshot ?? null,
+      cardio: input.cardio ?? false,
+      cardioPriceSnapshot: input.cardioPriceSnapshot ?? null,
       partialPayment: input.partialPayment ?? null,
     });
     if (moneyError) return { error: moneyError, code: null, userId: null };

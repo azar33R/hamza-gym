@@ -52,36 +52,51 @@ export async function getPaymentHistory(subscriptionId: string) {
   }[];
 }
 
-async function planPrice(planType: PlanType): Promise<number> {
+async function planPricing(planType: PlanType): Promise<{
+  price: number;
+  cardioPrice: number;
+}> {
   const supabase = serviceClient();
   const { data } = await supabase
     .from("plans")
-    .select("price_egp")
+    .select("price_egp, cardio_price")
     .eq("plan_type", planType)
     .maybeSingle();
-  return Number((data as { price_egp: number } | null)?.price_egp) || 0;
+  const row = (data as { price_egp: number; cardio_price: number } | null) ?? null;
+  return {
+    price: Number(row?.price_egp) || 0,
+    cardioPrice: Number(row?.cardio_price) || 0,
+  };
 }
 
 // Stamp a subscription as fully paid at the CURRENT plan price and write the
 // matching ledger row. Used by every full-payment activation path
 // (Vodafone approval, cash activation, full-price manual member creation) so
 // revenue — which reads paid_amount — stays correct for all of them.
+// `cardio` opts the cardio add-on in: the total becomes plan + cardio and both
+// the flag and the add-on snapshot are stored on the subscription.
 export async function stampFullPayment(
   subscriptionId: string,
   userId: string,
   planType: PlanType,
   method: "vodafone_cash" | "manual_coach",
-  note?: string | null
+  note?: string | null,
+  opts: { cardio?: boolean; cardioPriceSnapshot?: number | null } = {}
 ): Promise<{ error: string | null }> {
   const supabase = serviceClient();
-  const price = await planPrice(planType);
+  const { price, cardioPrice } = await planPricing(planType);
+  const cardioAddon =
+    opts.cardio && (opts.cardioPriceSnapshot ?? cardioPrice) > 0
+      ? Math.floor(Number(opts.cardioPriceSnapshot ?? cardioPrice))
+      : 0;
+  const total = price + cardioAddon;
 
   const { error: payError } = await supabase
     .from("subscription_payments")
     .insert({
       subscription_id: subscriptionId,
       user_id: userId,
-      amount: price,
+      amount: total,
       method,
       note: note ?? null,
     });
@@ -89,7 +104,13 @@ export async function stampFullPayment(
 
   const { error: subError } = await supabase
     .from("subscriptions")
-    .update({ price_snapshot: price, paid_amount: price, due_date: null })
+    .update({
+      price_snapshot: total,
+      paid_amount: total,
+      due_date: null,
+      cardio: cardioAddon > 0,
+      cardio_price_snapshot: cardioAddon,
+    })
     .eq("id", subscriptionId);
   if (subError) return { error: subError.message };
 
